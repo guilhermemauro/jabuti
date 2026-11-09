@@ -15,7 +15,13 @@ const run = (command: string) =>
 
 afterAll(async () => {
   await sandbox.dispose();
-  rmSync(dir, { recursive: true, force: true });
+  // On Linux the container's root owns what it wrote in the workspace, so the host
+  // user cannot delete it; the temporary folder is left behind (accepted, CI only).
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EACCES") throw error;
+  }
 });
 
 describe("C3: shell commands run in a container with only the workspace mounted", () => {
