@@ -203,6 +203,36 @@ The environment holds only what the server needs to start.
 | `JABUTI_PORT`                                  | `4317`                                   | Port.                                                                                  |
 | `JABUTI_SECRET_KEY` / `JABUTI_SECRET_KEY_FILE` | generated in the data directory          | Encrypts stored secrets. Set it so the key does not live next to the data it protects. |
 
+### Secret key
+
+Model keys, connector tokens and variables are stored encrypted. Without
+`JABUTI_SECRET_KEY`, Jabuti generates the key in the data directory (`secret.key`) and
+Settings warns about it: a backup or copy of that directory carries the key that opens
+it. To keep the key apart, move it into the environment, **without generating a new
+one**: a new key cannot decrypt what is already stored, and every secret would have to
+be entered again.
+
+On a server installed with `deploy/compose.yml` (`/opt/jabuti` for the script):
+
+```sh
+cd /opt/jabuti
+printf 'JABUTI_SECRET_KEY=%s\n' "$(docker compose exec -T jabuti cat /data/secret.key)" >> .env
+chmod 600 .env
+docker compose up -d
+```
+
+Open Settings: the warning is gone. Only then delete the file:
+
+```sh
+docker compose exec jabuti rm /data/secret.key
+```
+
+On Hostinger, add `JABUTI_SECRET_KEY` to the project's environment variables in
+Docker Manager, with the content of `/data/secret.key` (from the container's terminal).
+On your machine, put it in `.env` from `data/secret.key`. Keep a copy of the key
+somewhere safe outside the server: without it, a restored backup has no secrets.
+`JABUTI_SECRET_KEY_FILE` reads it from a file instead, such as a Docker secret.
+
 Agent templates live in [`agents/`](agents) and built-in skills in [`skills/`](skills).
 Your own agents and skills live in the data directory, editable in Settings or by
 hand.

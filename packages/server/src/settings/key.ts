@@ -26,10 +26,11 @@ export function loadSecretKey(
   return {
     key: derive(readFileSync(path, "utf8").trim()),
     warning: {
-      message: "Secrets are encrypted with a key stored next to the data (data/secret.key).",
+      message: `The key that encrypts your secrets is in the data folder (${path}), so a copy of that folder can decrypt them.`,
       nextStep:
-        "Set JABUTI_SECRET_KEY (or JABUTI_SECRET_KEY_FILE) to that file's content and delete " +
-        "the file, so a copy of the data alone cannot be decrypted.",
+        "Copy the file's content into JABUTI_SECRET_KEY (on a server, in the .env next to " +
+        "compose.yml), restart Jabuti, and delete the file only once this warning is gone. " +
+        "Step by step: https://github.com/guilhermemauro/jabuti#secret-key",
     },
   };
 }

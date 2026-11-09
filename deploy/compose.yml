@@ -15,6 +15,9 @@ services:
     restart: unless-stopped
     environment:
       JABUTI_RUNNER_URL: http://runner:4318
+      # From the .env next to this file, which updates never overwrite. Empty: a key
+      # is generated in the data volume (README → Secret key).
+      JABUTI_SECRET_KEY: ${JABUTI_SECRET_KEY:-}
     volumes:
       - jabuti-data:/data
       - runner-token:/run/jabuti-runner:ro
