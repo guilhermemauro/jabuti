@@ -1,0 +1,10 @@
+{
+  "description": "Writes SEO content in any language from a content brief: articles, comparisons, landing, product and category pages. Returns structured Markdown saved under drafts/. Give it the type, language and market, topic, primary keyword and goal; it reads your brief for audience and tone.",
+  "model": "anthropic/claude-sonnet-5-5",
+  "budget": { "maxSteps": 20, "maxCostUsd": 1 },
+  "tools": ["shell", "web_read"],
+  "permissions": { "shell": "auto" },
+  "mcp": ["serper"],
+  "userMemory": false,
+  "capture": false
+}

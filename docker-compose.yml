@@ -1,0 +1,42 @@
+# docker compose up -d, then open http://localhost:4317 and set the owner password
+# with the setup code printed by: docker compose logs jabuti
+services:
+  jabuti:
+    build: .
+    restart: unless-stopped
+    # Loopback only. To publish it, put a TLS reverse proxy in front: the session
+    # cookie and the password must not travel over plain HTTP.
+    ports:
+      - "127.0.0.1:4317:4317"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      JABUTI_RUNNER_URL: http://runner:4318
+    volumes:
+      - jabuti-data:/data
+      - runner-token:/run/jabuti-runner:ro
+      # Your agent profiles, editable without rebuilding the image.
+      - ./agents:/app/agents:ro
+    depends_on:
+      - runner
+
+  # Runs agents' shell commands. Gets no env_file: no secret ever reaches it.
+  runner:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    volumes:
+      - workspaces:/workspaces
+      - runner-token:/run/jabuti-runner
+      # System packages agents installed (C17), reinstalled when the image changes.
+      - runner-state:/var/lib/jabuti-runner
+    mem_limit: 2g
+    cpus: 2
+
+volumes:
+  jabuti-data:
+  workspaces:
+  runner-token:
+  runner-state:

@@ -1,0 +1,10 @@
+{
+  "description": "SEO agent for one site. Copy this folder per site (e.g. agents/my-blog/); each copy keeps its own brief, memory and workspace.",
+  "model": "anthropic/claude-opus-5-5",
+  "budget": { "maxSteps": 40, "maxCostUsd": 2 },
+  "tools": ["shell", "packages", "web_read", "page_structure", "site_crawl", "memory", "delegate"],
+  "permissions": { "shell": "auto" },
+  "subagents": ["explorer", "redator"],
+  "mcp": ["gsc"],
+  "skills": ["data-study"]
+}

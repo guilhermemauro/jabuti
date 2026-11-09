@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.DS_Store
+
+# Runtime state: SQLite database, traces, conversation workspaces. Never committed.
+data/
+
+.env
+.env.*
+!.env.example

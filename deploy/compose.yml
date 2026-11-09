@@ -1,0 +1,77 @@
+# Jabuti on a server: the published images behind Caddy, with HTTPS on its own.
+# Used as is by the Hostinger button and by deploy/install.sh (any VPS, AWS,
+# DigitalOcean). Needs ports 80 and 443 open, and nothing else.
+#
+# 1. docker compose up -d
+# 2. Open https://<your-ip-with-dashes>.sslip.io, such as https://203-0-113-10.sslip.io
+# 3. Set the owner password with the setup code from: docker compose logs jabuti
+#    Do it right away: until then, whoever has the code claims the instance.
+# 4. Settings → Domain: point a domain of your own at the server and save it there.
+#
+# Update: docker compose pull && docker compose up -d
+services:
+  jabuti:
+    image: ghcr.io/guilhermemauro/jabuti:latest
+    restart: unless-stopped
+    environment:
+      JABUTI_RUNNER_URL: http://runner:4318
+    volumes:
+      - jabuti-data:/data
+      - runner-token:/run/jabuti-runner:ro
+    depends_on:
+      - runner
+
+  # Runs agents' shell commands. No secret ever reaches it.
+  runner:
+    image: ghcr.io/guilhermemauro/jabuti-runner:latest
+    restart: unless-stopped
+    volumes:
+      - workspaces:/workspaces
+      - runner-token:/run/jabuti-runner
+      - runner-state:/var/lib/jabuti-runner
+    mem_limit: 2g
+    cpus: 2
+
+  # TLS for the names Jabuti allows (its sslip.io name and the domain set in
+  # Settings), asked of Jabuti itself before each certificate. The Caddyfile is
+  # inline so this one file is the whole deploy.
+  caddy:
+    image: caddy:2.10
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      CADDYFILE: |
+        {
+          on_demand_tls {
+            ask http://jabuti:4317/api/tls/allow
+          }
+        }
+        https:// {
+          tls {
+            on_demand
+          }
+          # Only Caddy asks it, from inside.
+          respond /api/tls/* 404
+          reverse_proxy jabuti:4317
+        }
+    entrypoint:
+      - /bin/sh
+      - -c
+      - printf '%s\n' "$$CADDYFILE" > /etc/caddy/Caddyfile && exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+    volumes:
+      # Certificates: kept so a restart does not ask Let's Encrypt again.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - jabuti
+
+volumes:
+  jabuti-data:
+  workspaces:
+  runner-token:
+  runner-state:
+  caddy-data:
+  caddy-config:

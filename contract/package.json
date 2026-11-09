@@ -1,0 +1,9 @@
+{
+  "name": "@jabuti/contract",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@jabuti/protocol": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.32.2"
+  }
+}

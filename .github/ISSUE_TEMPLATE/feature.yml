@@ -1,0 +1,23 @@
+name: Feature request
+description: Propose a capability or a change.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: The proposal
+      description: >
+        What you would like to happen. Capability goes first to a skill, then to an MCP
+        connector, and only last to a core tool: say which fits and why.
+  - type: textarea
+    id: contract
+    attributes:
+      label: Contract
+      description: Does it add or change an obligation in AGENTS.md? Which one?

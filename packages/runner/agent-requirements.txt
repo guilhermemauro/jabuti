@@ -1,0 +1,6 @@
+# Libraries every agent's python3 has, installed system-wide in the runner image.
+# For the files the owner attaches to a message (uploads/): PDF, Word and Excel.
+# Pinned: updated on purpose. An agent adds others with pip, into its own home.
+pypdf==7.0.0
+python-docx==1.2.0
+openpyxl==3.1.5

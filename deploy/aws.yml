@@ -1,0 +1,87 @@
+# Jabuti on AWS: one EC2 instance (Ubuntu 24.04) with a fixed IP, running
+# deploy/install.sh at first boot. In the AWS console: CloudFormation → Create
+# stack → Upload a template file → this file. Uses the region's default VPC.
+#
+# When the stack is done, its Outputs tab has the address. The setup code is in the
+# instance's system log: EC2 → the instance → Actions → Monitor and troubleshoot →
+# Get system log, near the end. Set the owner password right away.
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Jabuti, a self-hosted agent harness (https://github.com/guilhermemauro/jabuti)
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    AllowedValues: [t3.small, t3.medium, t3.large, t3.xlarge]
+    Description: t3.medium (4 GB) is comfortable; t3.small (2 GB) is tight for agents' shells.
+  DiskSize:
+    Type: Number
+    Default: 30
+    MinValue: 20
+    Description: GB for the database, workspaces and images.
+  KeyName:
+    Type: String
+    Default: ""
+    Description: Optional. An EC2 key pair, to reach the server by SSH. Empty keeps port 22 closed.
+
+Conditions:
+  HasKey: !Not [!Equals [!Ref KeyName, ""]]
+
+Resources:
+  Firewall:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Jabuti - HTTPS through Caddy
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: udp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0 }
+        - !If
+          - HasKey
+          - { IpProtocol: tcp, FromPort: 22, ToPort: 22, CidrIp: 0.0.0.0/0 }
+          - !Ref AWS::NoValue
+
+  # A fixed IP: the sslip.io address and your domain's DNS record depend on it.
+  Address:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  Server:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: "{{resolve:ssm:/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id}}"
+      KeyName: !If [HasKey, !Ref KeyName, !Ref AWS::NoValue]
+      SecurityGroupIds: [!GetAtt Firewall.GroupId]
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs: { VolumeSize: !Ref DiskSize, VolumeType: gp3, Encrypted: true }
+      Tags:
+        - { Key: Name, Value: jabuti }
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/sh
+          curl -fsSL https://raw.githubusercontent.com/guilhermemauro/jabuti/main/deploy/install.sh |
+            JABUTI_IP=${Address.PublicIp} sh
+
+  AddressLink:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt Address.AllocationId
+      InstanceId: !Ref Server
+
+Outputs:
+  Open:
+    Description: Jabuti's address until you set a domain (Settings → Domain).
+    Value: !Join
+      - ""
+      - - "https://"
+        - !Join ["-", !Split [".", !GetAtt Address.PublicIp]]
+        - ".sslip.io"
+  DnsRecord:
+    Description: For a domain of your own, an A record pointing here.
+    Value: !GetAtt Address.PublicIp
+  SetupCode:
+    Description: Where to find the setup code.
+    Value: EC2 → the jabuti instance → Actions → Monitor and troubleshoot → Get system log

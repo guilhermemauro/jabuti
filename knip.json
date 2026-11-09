@@ -1,0 +1,18 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.ts"]
+    },
+    "packages/*": {},
+    "packages/runner": {
+      "ignoreBinaries": ["useradd", "apt-get"]
+    },
+    "contract": {
+      "entry": ["fixtures/*.ts"]
+    },
+    "packages/mcp-images": {
+      "entry": ["src/nanobanana.ts", "src/gptimage.ts"]
+    }
+  }
+}

@@ -1,0 +1,85 @@
+# Development inside Docker, with hot reload:
+#   docker compose -f compose.dev.yml up --watch
+# then open http://localhost:5173. The first-run setup code is in the log printed
+# there (`watch` alone does not print the app's log). Edits under packages/ and agents/ are synced into
+# the container: Vite hot-reloads the UI and node --watch restarts the server.
+# Dependency changes rebuild the image. Stop a local `pnpm dev` first, or set
+# JABUTI_DEV_PORT to publish on another port.
+services:
+  jabuti-dev:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "127.0.0.1:${JABUTI_DEV_PORT:-5173}:5173"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      JABUTI_RUNNER_URL: http://runner:4318
+    volumes:
+      - jabuti-dev-data:/data
+      - runner-token:/run/jabuti-runner:ro
+    depends_on:
+      - runner
+    develop:
+      watch:
+        - action: rebuild
+          path: package.json
+        - action: rebuild
+          path: pnpm-lock.yaml
+        - action: rebuild
+          path: packages/server/package.json
+        - action: rebuild
+          path: packages/ui/package.json
+        - action: rebuild
+          path: packages/protocol/package.json
+        - action: rebuild
+          path: packages/mcp-serper/package.json
+        - action: rebuild
+          path: packages/mcp-gsc/package.json
+        - action: rebuild
+          path: packages/mcp-pagespeed/package.json
+        - action: rebuild
+          path: packages/mcp-dataforseo/package.json
+        - action: rebuild
+          path: packages/mcp-images/package.json
+        - action: rebuild
+          path: packages/mcp-wikipedia/package.json
+        - action: sync
+          path: packages
+          target: /app/packages
+          ignore:
+            - node_modules/
+            - dist/
+        # The server reads profiles at startup: restart it after editing agents.
+        - action: sync+restart
+          path: agents
+          target: /app/agents
+
+  # Runs agents' shell commands. Gets no env_file: no secret ever reaches it.
+  runner:
+    build:
+      context: .
+      target: runner
+    command: ["node", "--watch", "src/index.ts"]
+    volumes:
+      - workspaces:/workspaces
+      - runner-token:/run/jabuti-runner
+      # System packages agents installed (C17), reinstalled when the image changes.
+      - runner-state:/var/lib/jabuti-runner
+    mem_limit: 2g
+    cpus: 2
+    develop:
+      watch:
+        - action: sync
+          path: packages/runner/src
+          target: /runner/src
+        - action: rebuild
+          path: packages/runner/agent-requirements.txt
+
+volumes:
+  jabuti-dev-data:
+  workspaces:
+  runner-token:
+  runner-state:
