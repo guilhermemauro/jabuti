@@ -25,7 +25,7 @@
   --error: #ba1a1a;
   --error-container: #ffdad6;
   --on-error-container: #93000a;
-  /* Not a token in DESIGN.md: the terracotta its text names for risky actions and budgets. */
+  /* Not a token in DESIGN.md: the terracotta its text names for approvals and budgets. */
   --warning: #d97706;
 
   /* Borders between panels: a step lighter than outline-variant. */

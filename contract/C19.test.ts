@@ -293,9 +293,9 @@ describe("C19: an agent works on a plan alone, within limits Jabuti enforces", (
     expect(await h.autopilot?.tick()).toEqual([]);
   });
 
-  it("refuses a push in a routine run, as nobody's answer, and asks again once the owner writes", async () => {
+  it("refuses an approval in a routine run, as nobody's answer, and asks again once the owner writes", async () => {
     const c = clock("2026-11-03T08:01:00Z");
-    // The agent holds no key: any push it tries is a risky command (C9).
+    // Ask mode: the command waits for an approval nobody is there to give (C9).
     let pushes = 0;
     const script: Script = (request) => {
       if (!request.system.includes("# Your plan")) return { text: "ok" };
@@ -305,7 +305,7 @@ describe("C19: an agent works on a plan alone, within limits Jabuti enforces", (
     };
     const h = harness({
       script,
-      agents: [site],
+      agents: [{ ...site, permissions: { shell: "ask" as const } }],
       state: c.state,
       approvals: "wait",
       autopilot: { now: c.now },

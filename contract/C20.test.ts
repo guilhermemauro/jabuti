@@ -96,7 +96,7 @@ describe("C20: web pages are read in the agent's sandbox, never in the server", 
     expect(h.events).toContainEqual(
       expect.objectContaining({
         type: "approval.requested",
-        action: { kind: "shell", command: `${PAGE} read 'https://site.example/'`, risks: [] },
+        action: { kind: "shell", command: `${PAGE} read 'https://site.example/'` },
       }),
     );
     expect(h.sandbox.commands).toEqual([]);

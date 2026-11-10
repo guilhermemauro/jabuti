@@ -9,11 +9,15 @@ const installs =
 
 const toolNames = (tools: unknown) => (tools as { name: string }[]).map((t) => t.name);
 
-const installer = agent("installer", { tools: ["shell", "packages"] });
+const installer = agent("installer", {
+  tools: ["shell", "packages"],
+  permissions: { shell: "auto" },
+});
+const careful = agent("careful", { tools: ["shell", "packages"], permissions: { shell: "ask" } });
 
-describe("C17: system packages are installed only by name, after the user approves", () => {
-  it("installs after approval, even in auto mode", async () => {
-    const h = harness({ script: installs(["git", "ffmpeg"]), agents: [installer] });
+describe("C17: system packages are installed only by name, approved by the user in ask mode", () => {
+  it("installs after approval in ask mode", async () => {
+    const h = harness({ script: installs(["git", "ffmpeg"]), agents: [careful] });
     await h.turn("clone the repo");
     expect(h.events).toContainEqual(
       expect.objectContaining({
@@ -25,9 +29,16 @@ describe("C17: system packages are installed only by name, after the user approv
   });
 
   it("installs nothing when the user denies", async () => {
-    const h = harness({ script: installs(["git"]), agents: [installer], approvals: "deny" });
+    const h = harness({ script: installs(["git"]), agents: [careful], approvals: "deny" });
     await h.turn("clone the repo");
     expect(h.sandbox.installs).toEqual([]);
+  });
+
+  it("installs without asking in auto mode", async () => {
+    const h = harness({ script: installs(["git"]), agents: [installer], approvals: "deny" });
+    await h.turn("clone the repo");
+    expect(h.events.some((e) => e.type === "approval.requested")).toBe(false);
+    expect(h.sandbox.installs).toEqual([["git"]]);
   });
 
   it("refuses anything that is not a package name, before asking", async () => {

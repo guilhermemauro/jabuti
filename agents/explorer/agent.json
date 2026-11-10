@@ -1,5 +1,5 @@
 {
-  "description": "Investigates a question in the shared /workspace and reports back a concise answer. Runs shell commands on its own, asking only before risky ones.",
+  "description": "Investigates a question in the shared /workspace and reports back a concise answer. Runs shell commands on its own.",
   "model": "anthropic/claude-sonnet-5-5",
   "budget": { "maxSteps": 15, "maxCostUsd": 0.5 },
   "tools": ["shell", "packages"],

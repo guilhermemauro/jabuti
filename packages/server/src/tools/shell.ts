@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { risks } from "./shell-risk.ts";
 import type { Tool } from "./types.ts";
 
 const Input = z.strictObject({
@@ -31,13 +30,9 @@ export const shellTool: Tool<z.infer<typeof Input>> = {
     if (permission === "deny") {
       return { content: "The shell is disabled for this agent.", isError: true };
     }
-    const found = permission === "auto" ? risks(input.command) : [];
-    if (permission === "ask" || found.length > 0) {
-      const approved = await ctx.requestApproval({
-        kind: "shell",
-        command: input.command,
-        risks: found,
-      });
+    // Auto runs every command: the agent reaches only its own workspace, without secrets (C3).
+    if (permission === "ask") {
+      const approved = await ctx.requestApproval({ kind: "shell", command: input.command });
       if (!approved) return { content: "The user denied this command.", isError: true };
     }
     if (ctx.signal.aborted) return { content: "Cancelled by the user.", isError: true };

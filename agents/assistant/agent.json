@@ -1,5 +1,5 @@
 {
-  "description": "General assistant. Writes and runs code in its sandbox, asking only before risky commands (deleting, moving, sending data out), and sets up other agents when asked.",
+  "description": "General assistant. Writes and runs code in its sandbox, and sets up other agents when asked.",
   "model": "anthropic/claude-opus-5-5",
   "budget": {
     "maxSteps": 30,

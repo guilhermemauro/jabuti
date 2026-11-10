@@ -36,5 +36,5 @@ Examples of what we want to hear about:
 - one agent reading another agent's workspace, notes or credentials.
 
 Things that are expected behavior, not vulnerabilities: an agent in auto mode running
-commands the deterministic rules do not consider risky, and a variable you marked
+any command or installing packages in its sandbox without asking, and a variable you marked
 for an agent's shell being readable by that agent's model.

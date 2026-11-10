@@ -189,3 +189,12 @@ Owners asked for one-click instances on Hostinger, AWS and DigitalOcean. All thr
 - **The secret key comes from the `.env` next to the compose file,** which `install.sh` never downloads over, so updates keep it. Empty, the server generates one in the volume as before, so the Hostinger button and AWS work without it. README → Secret key moves the generated key there; a new key would leave every stored secret undecryptable.
 - **The runner is capped at one CPU,** as the local sandbox is: Docker refuses a limit above the host's CPUs, and the smallest VPS plans have one. Two made the install fail there.
 - **Accepted:** any canonical sslip.io name is allowed, since the server does not know its own public IP; one pointing elsewhere fails Let's Encrypt's check and costs a failed validation. The instance waits for its setup code on a public address until the owner claims it; the code is only in the log, and every guide says to claim it right away. The AWS Launch Stack button needs the template on S3, so for now the template is uploaded by hand.
+
+## 2026-11-10 — Auto mode never asks: shell commands and package installs (C9, C17)
+
+Owners chose Auto to leave an agent working, and it kept stopping on prompts: risky commands (delete, move, send data out, opaque code) and every package install still waited for them. Auto now runs every command and install without asking; Ask still waits on each.
+
+- **Why it holds:** an agent's commands run in its own workspace, without the server's secrets and never as root (C3, C17). The sandbox bounds what a command can reach; the rules only read the command line, so `python cleanup.py` deleting files was never seen anyway.
+- **The rules are gone** (`tools/shell-risk.ts`), with the approval's `risks` field and the exception for pushing a branch (an agent holds no deploy key; Jabuti pushes, C19).
+- **Still asked in Auto:** MCP tools the owner set to ask (C5), writes to brief, notes, profiles and skills (C14, C16), and another agent's run with its variables (C12, C16). They reach secrets or the owner's configuration, not only the agent's workspace.
+- **Accepted:** a mistaken `rm -rf` in Auto loses the agent's workspace. Ask is the mode for work the owner wants to watch.

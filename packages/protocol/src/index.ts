@@ -101,7 +101,7 @@ export type HistoryMessage = z.infer<typeof HistoryMessage>;
 /** The name becomes a directory under data/agents/ and a Unix user in the runner. */
 export const AGENT_NAME = /^[a-z0-9][a-z0-9-]{0,40}$/;
 
-/** ask: every command; auto: only commands the rules find risky (C9); deny: no shell. */
+/** ask: every command and package install; auto: none of them (C9, C17); deny: no shell. */
 export const ShellPermission = z.enum(["ask", "auto", "deny"]);
 export type ShellPermission = z.infer<typeof ShellPermission>;
 
@@ -617,7 +617,7 @@ export const ModelInfo = z.object({
 });
 export type ModelInfo = z.infer<typeof ModelInfo>;
 
-/** ask: every command. auto: only commands the rules find risky (C9). */
+/** ask: every command and package install. auto: none of them (C9, C17). */
 export const ShellMode = z.enum(["ask", "auto"]);
 export type ShellMode = z.infer<typeof ShellMode>;
 
@@ -654,12 +654,8 @@ export type TurnEndReason = z.infer<typeof TurnEndReason>;
 
 /** What the user is asked to approve. */
 export const ApprovalAction = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("shell"),
-    command: z.string(),
-    /** Why the auto mode asks; empty when the mode asks for every command. */
-    risks: z.array(z.string()),
-  }),
+  /** A command in ask mode (C9). */
+  z.object({ kind: z.literal("shell"), command: z.string() }),
   /** A write to one of the agent's own files; diff lines start with "+ ", "- " or "  ". */
   z.object({
     kind: z.literal("file"),

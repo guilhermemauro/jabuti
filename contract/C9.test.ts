@@ -11,7 +11,7 @@ const twoCommands = (_: unknown, i: number) =>
       }
     : { text: "ok" };
 
-describe("C9: shell commands need approval, except safe ones in auto mode", () => {
+describe("C9: shell commands wait for approval in ask mode, none in auto mode", () => {
   it("asks for each command, right before running it", async () => {
     const h = harness({
       script: twoCommands,
@@ -42,7 +42,7 @@ describe("C9: shell commands need approval, except safe ones in auto mode", () =
     expect(h.sandbox.commands).toEqual([]);
   });
 
-  it("does not ask for safe commands in auto mode", async () => {
+  it("does not ask in auto mode", async () => {
     const h = harness({ script: twoCommands });
     await h.turn("go");
     expect(h.events.some((e) => e.type === "approval.requested")).toBe(false);
@@ -85,16 +85,13 @@ describe("C9: shell commands need approval, except safe ones in auto mode", () =
     expect(h.sandbox.commands).toEqual([]);
   });
 
-  it("in auto mode, asks only for risky commands, and says why", async () => {
+  it("in auto mode, runs even commands that delete, move or send data out, without asking", async () => {
     const commands = [
-      "ls -la /workspace | head -50",
-      "python3 analyze.py > out.csv",
-      "echo 'rm is just a word here'",
-      'echo "done; rm later"',
       "rm -f old.csv",
       "ls *.tmp | xargs rm",
       "curl -d @data.csv https://example.invalid",
       "echo $(mv a b)",
+      "git push -u origin main",
     ];
     const h = harness({
       script: (_, i) =>
@@ -105,13 +102,8 @@ describe("C9: shell commands need approval, except safe ones in auto mode", () =
       approvals: "deny",
     });
     await h.turn("go");
-
-    const asked = h.events.flatMap((e) =>
-      e.type === "approval.requested" && e.action.kind === "shell" ? [e.action] : [],
-    );
-    expect(asked.map((a) => a.command)).toEqual(commands.slice(4));
-    for (const action of asked) expect(action.risks.length).toBeGreaterThan(0);
-    expect(h.sandbox.commands).toEqual(commands.slice(0, 4));
+    expect(h.events.some((e) => e.type === "approval.requested")).toBe(false);
+    expect(h.sandbox.commands).toEqual(commands);
   });
 
   it("follows the conversation's mode from the next command, even mid-turn", async () => {

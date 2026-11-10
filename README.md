@@ -35,9 +35,8 @@ agent may do.
   the history is shared, the capabilities are not.
 
 - **Agents do real work in a shell.** Commands run in a Linux container with Python,
-  one workspace per agent, with no secret from the server. You approve risky commands
-  (delete, move, send data out, opaque code), or every command, per agent and per
-  conversation.
+  one workspace per agent, with no secret from the server. Per agent and per
+  conversation, they run on their own (auto) or wait for your approval on each (ask).
 
 - **Secrets stay in the server.** API keys and tokens are encrypted at rest and reach
   only the MCP connectors of the agents in their scope. The model never sees them,

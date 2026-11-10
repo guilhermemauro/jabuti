@@ -74,7 +74,7 @@ async function run(job: Run, ctx: ToolContext): Promise<ToolOutput> {
   const command = `${PYTHON}/${job.script} ${quote(checked.url)}${job.extra ? ` ${job.extra}` : ""}`;
   // A command in the agent's sandbox like any other: in ask mode, the owner sees it first.
   if (permission === "ask") {
-    const approved = await ctx.requestApproval({ kind: "shell", command, risks: [] });
+    const approved = await ctx.requestApproval({ kind: "shell", command });
     if (!approved) return { content: "The user denied this command.", isError: true };
   }
   if (ctx.signal.aborted) return { content: "Cancelled by the user.", isError: true };

@@ -436,13 +436,13 @@ function ToolsSection(props: {
             }
           }}
         >
-          <option value="auto">Auto: asks only before risky commands</option>
+          <option value="auto">Auto: runs commands and installs without asking</option>
           <option value="ask">Ask before every command</option>
           <option value="deny">No shell</option>
         </select>
         <span className="sub">
-          Auto asks before deleting, moving or sending data out. Each conversation can switch
-          between Auto and Ask; No shell cannot be overridden.
+          Auto never asks: commands and package installs run in the agent's own workspace. Each
+          conversation can switch between Auto and Ask; No shell cannot be overridden.
         </span>
       </fieldset>
 

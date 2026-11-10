@@ -129,7 +129,7 @@ The aesthetic blends **Modern Technical SaaS** with **Tactile Botanical Minimali
 
 The palette is rooted in evergreen organic depths, paired with cool slate-tinted neutrals for clarity and low eye strain during prolonged technical workflows.
 
-The tokens in the front matter are the source of truth; the UI uses no other colors (`packages/ui/src/styles.css`). The one addition is a warning terracotta for risky actions and budgets, which has no token.
+The tokens in the front matter are the source of truth; the UI uses no other colors (`packages/ui/src/styles.css`). The one addition is a warning terracotta for what waits for the owner and for budgets, which has no token.
 
 ### Palette Architecture
 
@@ -138,7 +138,7 @@ The tokens in the front matter are the source of truth; the UI uses no other col
 - **Mint highlight (`tertiary-fixed` `#d3e7dc`):** Reserved for active conversational selections and active navigation items.
 - **Text (`on-surface` `#171d1a`, `on-surface-variant` `#404943`, `outline` `#707972`):** Dark forest-slate for primary typography; variant for secondary text; outline for metadata.
 - **Canvas (`surface` `#f5fbf6`, `surface-container-*`):** Muted off-white surfaces with green-tinted neutrals to prevent stark hospital glare.
-- **Status & Warning Accents:** `error` `#ba1a1a` on `error-container` `#ffdad6` for failures; terracotta `#d97706` (no token) for risky command warnings and budget thresholds.
+- **Status & Warning Accents:** `error` `#ba1a1a` on `error-container` `#ffdad6` for failures; terracotta `#d97706` (no token) for approvals waiting for the owner and budget thresholds.
 
 ## Typography
 

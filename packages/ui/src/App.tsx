@@ -358,7 +358,7 @@ export function App(props: { onLogout: () => void; onSessionCheck: () => void })
                 {openAgent && openAgent.shell !== "deny" && (
                   <label
                     className="chip"
-                    title="Auto runs commands without asking, except deleting, moving, sending data out and the like."
+                    title="Auto runs every command and package install without asking. Ask waits for your approval on each."
                   >
                     <TerminalIcon size={14} />
                     <select
@@ -376,7 +376,7 @@ export function App(props: { onLogout: () => void; onSessionCheck: () => void })
                       <option value="">
                         Shell: agent default ({SHELL_LABELS[openAgent.shell]})
                       </option>
-                      <option value="auto">Shell: Auto (asks only for risky commands)</option>
+                      <option value="auto">Shell: Auto (never asks)</option>
                       <option value="ask">Shell: Ask every command</option>
                     </select>
                   </label>
@@ -841,9 +841,7 @@ function Approval({
               ? `Install ${action.packages.join(", ")}? System packages stay installed and other agents may use them too.`
               : action.kind === "mcp"
                 ? `Let the agent call ${action.tool} on ${action.server} with these arguments?`
-                : action.risks.length > 0
-                  ? `Run this command? It ${action.risks.join("; ")}.`
-                  : "Run this command?"}
+                : "Run this command?"}
         <button
           className="primary"
           onClick={() => {

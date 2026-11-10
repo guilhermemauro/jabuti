@@ -89,7 +89,7 @@ export const viewImagesTool: Tool<Input> = {
     const out = `jabuti-view/${ctx.callId.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 60) || "mosaic"}.jpg`;
     const command = `${IMAGES} mosaic ${out} -- ${checked.sources.map(quote).join(" ")}`;
     if (permission === "ask") {
-      const approved = await ctx.requestApproval({ kind: "shell", command, risks: [] });
+      const approved = await ctx.requestApproval({ kind: "shell", command });
       if (!approved) return { content: "The user denied this command.", isError: true };
     }
     if (ctx.signal.aborted) return { content: "Cancelled by the user.", isError: true };
