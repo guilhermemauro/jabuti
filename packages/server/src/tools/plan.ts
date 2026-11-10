@@ -18,7 +18,7 @@ const Input = z.strictObject({
     ])
     .describe(
       "read the plan; propose_milestone for the owner to approve; update_milestone " +
-        "(status, progress, evidence, or ask to drop it); propose_change: an experiment " +
+        "(progress, done with evidence, or ask to drop it); propose_change: an experiment " +
         "for the owner to approve; amend or withdraw a proposal; record a due check; " +
         "sync: when publishing is set, bring the base branch into your clone (or clone it).",
     ),
@@ -32,10 +32,7 @@ const Input = z.strictObject({
   due: z.string().optional().describe("YYYY-MM-DD."),
   depends_on: z.array(z.string()).optional(),
   priority: z.number().optional().describe("Lower runs first."),
-  status: z
-    .enum(["running", "done"])
-    .optional()
-    .describe("running: you start it. done: needs evidence that meets its criterion."),
+  status: z.enum(["done"]).optional().describe("done: needs evidence that meets its criterion."),
   progress: z.string().optional().describe("Where it stands now, with numbers."),
   evidence: z.string().optional().describe("For done: the measured numbers, period, source."),
   drop_reason: z.string().optional().describe("Asks the owner to drop the milestone."),
@@ -70,9 +67,9 @@ export const planTool: Tool<Input> = {
       "Your plan: milestones the owner approved, and experiments, each one change measured " +
         "against a baseline. The plan as of this conversation's start is in the system " +
         "prompt; read it for the current state.",
-      "Milestones you propose wait for the owner; you start them, report progress, and mark " +
-        "them done only with evidence that meets their criterion. Their goal and criterion " +
-        "are the owner's.",
+      "Milestones you propose wait for the owner, unseen until approved; you report progress " +
+        "and mark one done only with evidence that meets its criterion. Their goal, criterion " +
+        "and order are the owner's: a routine run is told which one to work on.",
       "Every change you publish is an experiment (propose_change): the owner approves it, " +
         "and its pages stay locked until every check is recorded, so each result is " +
         "readable. Control pages never change. Record a check only once it is due, from " +

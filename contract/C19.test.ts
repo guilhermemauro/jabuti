@@ -104,7 +104,7 @@ describe("C19: an agent works on a plan alone, within limits Jabuti enforces", (
     expect(plan.experiments[0]?.urls).toEqual(["/a"]);
     expect(plan.milestones[0]?.status).toBe("running");
     expect(readFileSync(join(c.dir, "site", "plan.md"), "utf8")).toContain(
-      "M1 [running] Quick wins",
+      "M1 Quick wins (in progress)",
     );
     expect(
       readFileSync(join(c.dir, "site", "plan.log.jsonl"), "utf8").split("\n").length,
@@ -114,7 +114,7 @@ describe("C19: an agent works on a plan alone, within limits Jabuti enforces", (
     const third = harness({ script: () => ({ text: "ok" }), agents: [site], state: c.state });
     await third.turn("hi");
     const system = third.model.requests[0]?.system ?? "";
-    expect(system).toContain("M1 [running] Quick wins");
+    expect(system).toContain("M1 Quick wins (in progress)");
     expect(system).toContain("e-0001 [M1, title] /a");
     expect(existsSync(join(c.dir, "site", "workspace", "plan.json"))).toBe(false);
   });
@@ -217,6 +217,68 @@ describe("C19: an agent works on a plan alone, within limits Jabuti enforces", (
     await last.turn("measure");
     expect(results(last)[0]?.content).toContain("is done");
     expect(results(last)[1]?.isError).toBe(false);
+  });
+
+  it("works, in a routine, on the milestone Jabuti picks from the owner's priorities, and shows the agent only approved ones", async () => {
+    const c = clock();
+    const save = (title: string, priority: number, dependsOn: string[] = []) =>
+      c.state.plans.saveMilestone("site", undefined, {
+        title,
+        goal: "g",
+        doneWhen: "d",
+        priority,
+        dependsOn,
+      });
+    save("Guides", 3);
+    save("Hub", 1, ["M1"]);
+    save("Fixes", 2);
+    const h = harness({
+      script: (request, i) =>
+        request.system.includes("# Your plan") && i === 0
+          ? { calls: [{ name: "plan", input: { ...milestone, title: " guides " } }] }
+          : { text: "Report." },
+      agents: [site],
+      state: c.state,
+      autopilot: { now: c.now },
+    });
+    c.state.plans.proposeMilestone("site", { title: "Agent idea", goal: "g", doneWhen: "d" });
+
+    const run = await h.autopilot?.act("site", { op: "run", kind: "act" });
+    await h.runtime.idle(run?.conversationId ?? "");
+    // M2 comes first but waits for M1: Jabuti starts M3, the next by priority, and names it.
+    expect(c.state.plans.get("site").milestones.map((m) => m.status)).toEqual([
+      "pending",
+      "pending",
+      "running",
+      "proposed",
+    ]);
+    const request = h.model.requests[0];
+    expect(JSON.stringify(request?.messages)).toContain("M3 (Fixes)");
+    // Only approved milestones, each with what it means; the agent's own idea waits unseen.
+    const system = request?.system ?? "";
+    expect(system).toContain("M3 Fixes (in progress)");
+    expect(system).toContain("M2 Hub (after M1)");
+    expect(system).toContain("M1 Guides (approved, not started)");
+    expect(system).not.toContain("Agent idea");
+    expect(system).not.toContain("pending");
+    // A title already in the plan is refused, so an idea the agent cannot see is not proposed twice.
+    expect(results(h)[0]?.content).toContain("M1 already");
+
+    // Nothing approved is ready: the run is told why and proposes nothing.
+    const idle = clock();
+    idle.state.plans.proposeMilestone("site", { title: "Idea", goal: "g", doneWhen: "d" });
+    const quiet = harness({
+      script: () => ({ text: "Report." }),
+      agents: [site],
+      state: idle.state,
+      autopilot: { now: idle.now },
+    });
+    const none = await quiet.autopilot?.act("site", { op: "run", kind: "act" });
+    await quiet.runtime.idle(none?.conversationId ?? "");
+    expect(JSON.stringify(quiet.model.requests[0]?.messages)).toContain(
+      "No approved milestone is open",
+    );
+    expect(idle.state.plans.get("site").milestones[0]?.status).toBe("proposed");
   });
 
   it("runs on its routine once a day, unattended: approvals refused at once, notes marked auto, a report kept", async () => {

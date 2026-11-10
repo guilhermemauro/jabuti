@@ -1,11 +1,12 @@
 // An agent's plan on disk (C19): data/agents/<name>/plan.json, the only source of
-// truth, written only here. plan.md is a view for people, rebuilt after every
+// truth, written only here. plan.md is the owner's view of it, rebuilt after every
 // change; plan.log.jsonl records every change, who made it and when.
 //
 // The rules that keep an unattended agent moderate live here, in code, not in a
 // prompt: a page being measured or waiting for the owner cannot get another change,
 // control pages never change, open proposals are capped, a rejected idea waits, a
-// check is recorded only once it is due, and a milestone's goal is the owner's.
+// check is recorded only once it is due, a milestone's goal is the owner's, and a
+// routine works on the milestone Jabuti picks from the owner's priorities.
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -157,13 +158,13 @@ export class Plans {
   }
 
   /**
-   * The agent's side: start, report progress, finish with evidence, or ask to drop.
-   * Never the goal, criterion or due date: those are the owner's.
+   * The agent's side: report progress, finish with evidence, or ask to drop. Never the
+   * goal, criterion or due date, nor which one starts: those are the owner's (focus).
    */
   updateMilestone(
     agent: string,
     id: string,
-    change: { status?: "running" | "done"; progress?: string; evidence?: string; drop?: string },
+    change: { status?: "done"; progress?: string; evidence?: string; drop?: string },
   ): Result<Milestone> {
     return this.mutate(agent, "agent", `milestone.update ${id}`, (plan) => {
       const current = plan.milestones.find((m) => m.id === id);
@@ -177,15 +178,6 @@ export class Plans {
       const next: Milestone = { ...current, updatedAt: this.today() };
       if (change.progress !== undefined) next.progress = clip(change.progress);
       if (change.drop !== undefined) next.dropRequest = clip(change.drop);
-      if (change.status === "running") {
-        const blocked = current.dependsOn.filter(
-          (d) => plan.milestones.find((m) => m.id === d)?.status !== "done",
-        );
-        if (blocked.length > 0) {
-          return { problem: `${id} depends on ${blocked.join(", ")}, not done yet.` };
-        }
-        next.status = "running";
-      }
       if (change.status === "done") {
         if (!change.evidence?.trim()) {
           return {
@@ -206,6 +198,35 @@ export class Plans {
         next.evidence = clip(change.evidence);
       }
       plan.milestones = plan.milestones.map((m) => (m.id === id ? next : m));
+      return next;
+    });
+  }
+
+  /**
+   * The milestone a routine works on: the owner's first approved one, by priority, whose
+   * dependencies are done. Code, not the model's judgment: a model read "pending" as
+   * "waiting for approval" and waited for an approval already given.
+   */
+  focus(plan: PlanFile): Result<Milestone> {
+    const open = plan.milestones
+      .filter((m) => m.status === "pending" || m.status === "running")
+      .sort(byPriority);
+    if (open.length === 0) {
+      return { problem: "No approved milestone is open: the owner approves or adds one." };
+    }
+    const ready = open.find((m) => waitsFor(plan, m).length === 0);
+    if (ready) return ready;
+    const waits = open.map((m) => `${m.id} after ${waitsFor(plan, m).join(", ")}`);
+    return { problem: `Every approved milestone waits for another: ${waits.join("; ")}.` };
+  }
+
+  /** Jabuti starts the focus, so a routine run never waits for a decision already made. */
+  startFocus(agent: string): Result<Milestone> {
+    const focus = this.focus(this.get(agent));
+    if ("problem" in focus || focus.status === "running") return focus;
+    return this.mutate(agent, "jabuti", `milestone.start ${focus.id}`, (plan) => {
+      const next: Milestone = { ...focus, status: "running", updatedAt: this.today() };
+      plan.milestones = plan.milestones.map((m) => (m.id === focus.id ? next : m));
       return next;
     });
   }
@@ -236,9 +257,7 @@ export class Plans {
         };
       }
       if (milestone.status === "pending") {
-        const blocked = milestone.dependsOn.filter(
-          (d) => plan.milestones.find((m) => m.id === d)?.status !== "done",
-        );
+        const blocked = waitsFor(plan, milestone);
         if (blocked.length > 0) {
           return { problem: `${milestone.id} depends on ${blocked.join(", ")}, not done yet.` };
         }
@@ -468,23 +487,32 @@ export class Plans {
     });
   }
 
-  /** The plan as the agent sees it at a conversation's start (C7). */
-  render(plan: PlanFile, options: { reports?: number } = {}): string {
+  /**
+   * The plan as the agent sees it at a conversation's start (C7): only milestones the
+   * owner approved, each with what its state means, never a bare status word. The owner's
+   * view (plan.md) also lists the agent's proposals.
+   */
+  render(plan: PlanFile, options: { reports?: number; owner?: boolean } = {}): string {
     const today = this.today();
     const lines = [`# Your plan, as of ${today} (change it with the plan tool)`, ""];
-    const active = plan.milestones.filter((m) => m.status !== "dropped");
-    if (active.length === 0) {
-      lines.push("No milestones yet: propose some for the owner to approve.", "");
+    const shown = plan.milestones.filter(
+      (m) => m.status !== "dropped" && (options.owner === true || m.status !== "proposed"),
+    );
+    if (shown.length === 0) {
+      lines.push(
+        plan.milestones.some((m) => m.status === "proposed")
+          ? "No approved milestones yet: the owner decides on your proposals."
+          : "No milestones yet: propose some for the owner to approve.",
+        "",
+      );
     } else {
-      lines.push("Milestones (lower priority number first):");
-      for (const m of [...active].sort(byPriority)) {
-        const parts = [`- ${m.id} [${m.status}] ${m.title}: ${m.goal}`];
+      lines.push("Milestones the owner approved, in priority order:");
+      for (const m of [...shown].sort(byPriority)) {
+        const parts = [`- ${m.id} ${m.title} (${stateOf(plan, m)}): ${m.goal}`];
         parts.push(`  done when: ${m.doneWhen}`);
-        const meta = [
-          m.due ? `due ${m.due}` : "",
-          m.dependsOn.length > 0 ? `after ${m.dependsOn.join(", ")}` : "",
-          `priority ${String(m.priority)}`,
-        ].filter(Boolean);
+        const meta = [m.due ? `due ${m.due}` : "", `priority ${String(m.priority)}`].filter(
+          Boolean,
+        );
         parts.push(`  ${meta.join(" · ")}`);
         if (m.progress) parts.push(`  progress: ${m.progress}`);
         if (m.evidence) parts.push(`  evidence: ${m.evidence}`);
@@ -609,6 +637,19 @@ export class Plans {
     return this.mutate(agent, by, "milestone.add", (plan) => {
       const problem = invalidMilestone(input, plan, undefined);
       if (problem) return { problem };
+      // The agent does not see its own proposals (render): without this it proposes them again.
+      const title = clip(input.title, 120).toLowerCase();
+      const same = plan.milestones.find(
+        (m) => m.status !== "dropped" && m.title.toLowerCase() === title,
+      );
+      if (same) {
+        return {
+          problem:
+            same.status === "proposed"
+              ? `${same.id} already proposes "${same.title}": it waits for the owner.`
+              : `${same.id} already is "${same.title}".`,
+        };
+      }
       const milestone: Milestone = {
         id: `M${String(plan.next.milestone++)}`,
         ...milestoneFields(input),
@@ -652,7 +693,7 @@ export class Plans {
     const folder = join(this.dir, agent);
     mkdirSync(folder, { recursive: true });
     writeAtomic(join(folder, "plan.json"), `${JSON.stringify(plan, null, 2)}\n`);
-    writeAtomic(join(folder, "plan.md"), this.render(plan));
+    writeAtomic(join(folder, "plan.md"), this.render(plan, { owner: true }));
     appendFileSync(
       join(folder, "plan.log.jsonl"),
       `${JSON.stringify({ at: new Date().toISOString(), author, what, result })}\n`,
@@ -748,6 +789,28 @@ function validTimeZone(timeZone: string): boolean {
     return true;
   } catch {
     return false;
+  }
+}
+
+/** The milestones it depends on that are not done yet. */
+function waitsFor(plan: PlanFile, m: Milestone): string[] {
+  return m.dependsOn.filter((d) => plan.milestones.find((x) => x.id === d)?.status !== "done");
+}
+
+/** What a milestone's status means, in words a model cannot misread. */
+function stateOf(plan: PlanFile, m: Milestone): string {
+  switch (m.status) {
+    case "proposed":
+      return "proposed, waiting for the owner";
+    case "running":
+      return "in progress";
+    case "pending": {
+      const waits = waitsFor(plan, m);
+      return waits.length > 0 ? `after ${waits.join(", ")}` : "approved, not started";
+    }
+    case "done":
+    case "dropped":
+      return m.status;
   }
 }
 

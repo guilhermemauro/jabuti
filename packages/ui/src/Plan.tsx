@@ -235,8 +235,8 @@ function RoutineCard({
 
 const STATUS_LABEL: Record<Milestone["status"], string> = {
   proposed: "proposed by agent",
-  pending: "pending",
-  running: "running",
+  pending: "approved, not started",
+  running: "in progress",
   done: "done",
   dropped: "dropped",
 };
@@ -593,7 +593,7 @@ function MilestoneForm(props: {
             >
               {(["pending", "running", "done", "dropped"] as const).map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {STATUS_LABEL[s]}
                 </option>
               ))}
             </select>
