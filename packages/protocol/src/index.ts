@@ -539,6 +539,28 @@ export const PlanAction = z.discriminatedUnion("op", [
 ]);
 export type PlanAction = z.infer<typeof PlanAction>;
 
+/** The running version and the newest release, for the owner to update (deploy/). */
+export const VersionInfo = z.object({
+  /** The release tag this image was built from, such as v0.1.2; "dev" for any other build. */
+  current: z.string(),
+  commit: z.string().nullable(),
+  /** owner/name on GitHub, where releases are published. */
+  repository: z.string(),
+  latest: z
+    .object({
+      version: z.string(),
+      url: z.string(),
+      notes: z.string(),
+      publishedAt: z.string().nullable(),
+    })
+    .nullable(),
+  /** Whether latest is newer than current. */
+  newer: z.boolean(),
+  checkedAt: z.string().nullable(),
+  problem: z.object({ message: z.string(), nextStep: z.string() }).nullable(),
+});
+export type VersionInfo = z.infer<typeof VersionInfo>;
+
 export const SettingsSnapshot = z.object({
   agents: z.array(AgentProfileData),
   /** Starting points for a new agent (the repository's agents/ folder). */
@@ -551,6 +573,7 @@ export const SettingsSnapshot = z.object({
   mcpServers: z.array(McpServerInfo),
   /** The owner's domain on a server (deploy/); null while it answers on its sslip.io name. */
   domain: z.string().nullable(),
+  version: VersionInfo,
   skills: z.array(SkillData),
   knownVariables: z.array(KnownVariable),
   /** Setup issues worth fixing, such as a secret key stored next to the data. */

@@ -1,6 +1,6 @@
 // The settings screen. Agents come first, each on its own page (SettingsAgents.tsx);
 // the other tabs hold what is shared: skills, what Jabuti knows about the user,
-// variables, model keys and the public domain. It shows what the server sends and sends changes back; secret values go
+// variables, model keys, the public domain and the version. It shows what the server sends and sends changes back; secret values go
 // up, never down (C16).
 import type { ClientMessage, ModelInfo, ProviderKeyInfo, SettingsSnapshot } from "@jabuti/protocol";
 import { useEffect, useState } from "react";
@@ -11,9 +11,11 @@ import { Connectors } from "./SettingsConnectors.tsx";
 import { Domain } from "./SettingsDomain.tsx";
 import { Skills } from "./SettingsSkills.tsx";
 import { Variables } from "./SettingsVariables.tsx";
+import { Version } from "./SettingsVersion.tsx";
 
 type Send = (message: ClientMessage) => void;
-type Tab = "agents" | "skills" | "connectors" | "about" | "variables" | "keys" | "domain";
+type Tab =
+  "agents" | "skills" | "connectors" | "about" | "variables" | "keys" | "domain" | "version";
 
 const TAB_LABELS: Record<Tab, string> = {
   agents: "Agents",
@@ -23,6 +25,7 @@ const TAB_LABELS: Record<Tab, string> = {
   variables: "Variables",
   keys: "Model keys",
   domain: "Domain",
+  version: "Version",
 };
 
 export function SettingsScreen(props: {
@@ -48,7 +51,16 @@ export function SettingsScreen(props: {
         <span className="settings-title">Agents &amp; settings</span>
         <nav className="tabs">
           {(
-            ["agents", "skills", "connectors", "about", "variables", "keys", "domain"] as const
+            [
+              "agents",
+              "skills",
+              "connectors",
+              "about",
+              "variables",
+              "keys",
+              "domain",
+              "version",
+            ] as const
           ).map((t) => (
             <button
               key={t}
@@ -80,6 +92,7 @@ export function SettingsScreen(props: {
         {tab === "variables" && <Variables settings={settings} send={send} />}
         {tab === "keys" && <Keys keys={settings.providerKeys} send={send} />}
         {tab === "domain" && <Domain domain={settings.domain} send={send} />}
+        {tab === "version" && <Version version={settings.version} />}
       </div>
     </div>
   );

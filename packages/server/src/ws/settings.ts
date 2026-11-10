@@ -17,6 +17,7 @@ import type { Settings } from "../settings/index.ts";
 import type { Skills } from "../skills/index.ts";
 import type { ListedTool, McpServers } from "../mcp/servers.ts";
 import type { Domain } from "../domain/index.ts";
+import { Version } from "../version/index.ts";
 
 export interface SettingsDeps {
   agents: AgentRegistry;
@@ -32,6 +33,8 @@ export interface SettingsDeps {
   discover?: (name: string, agents: string[]) => Promise<ListedTool[]>;
   /** The public domain on a server; absent in tests that need none. */
   domain?: Domain;
+  /** The running version and the newest release; absent in tests that need none. */
+  version?: Version;
   /** Skills agents may list (C4). */
   skills: Skills;
   /** Setup issues, such as a secret key generated next to the data. */
@@ -228,6 +231,7 @@ export function snapshot(deps: SettingsDeps): SettingsSnapshot {
     connectors: connectors(deps),
     mcpServers: deps.mcpServers?.list() ?? [],
     domain: deps.domain?.get() ?? null,
+    version: (deps.version ?? new Version({})).info(),
     skills: deps.skills.data(),
     knownVariables: knownVariables(deps),
     // A skill folder that cannot be read is a setup issue the owner fixes on disk.
