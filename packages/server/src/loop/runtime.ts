@@ -112,7 +112,18 @@ export class Runtime {
   }
 
   info({ id, title, agent, model, shellMode, unattended }: Conversation): ConversationInfo {
-    return { id, title, agent, model, shellMode, running: this.running.has(id), unattended };
+    let waiting = 0;
+    for (const a of this.approvals.values()) if (a.conversationId === id) waiting++;
+    return {
+      id,
+      title,
+      agent,
+      model,
+      shellMode,
+      running: this.running.has(id),
+      waiting,
+      unattended,
+    };
   }
 
   /** How the conversation's last turn ended in this process, if it ran one. */
@@ -467,6 +478,7 @@ export class Runtime {
             this.approvals.delete(approvalId);
             signal.removeEventListener("abort", onAbort);
             emit({ type: "approval.resolved", approvalId, approved });
+            this.updated(conversationId);
             resolve(approved);
           };
           const onAbort = () => {
@@ -487,6 +499,8 @@ export class Runtime {
             : [requested];
           this.approvals.set(approvalId, { conversationId, replay, settle });
           emit(requested);
+          // Every client learns it, not only one with the conversation open (C9).
+          this.updated(conversationId);
         }),
     };
   }

@@ -198,3 +198,7 @@ Owners chose Auto to leave an agent working, and it kept stopping on prompts: ri
 - **The rules are gone** (`tools/shell-risk.ts`), with the approval's `risks` field and the exception for pushing a branch (an agent holds no deploy key; Jabuti pushes, C19).
 - **Still asked in Auto:** MCP tools the owner set to ask (C5), writes to brief, notes, profiles and skills (C14, C16), and another agent's run with its variables (C12, C16). They reach secrets or the owner's configuration, not only the agent's workspace.
 - **Accepted:** a mistaken `rm -rf` in Auto loses the agent's workspace. Ask is the mode for work the owner wants to watch.
+
+## 2026-11-10 — A waiting approval is impossible to miss (C9)
+
+Owners took long to notice an agent waiting: the buttons sat inside a tool group, often scrolled up, and nothing showed outside the open conversation. The conversation's info now carries `waiting` (its pending approvals, subagents' included), sent to every client when one starts or ends. The UI shows it in the session list and the Conversations badge, in a banner for conversations not on screen, in the tab title, and pins the open conversation's approvals above the composer; the transcript only points there. No browser notifications for now: they need a permission prompt and a setting.

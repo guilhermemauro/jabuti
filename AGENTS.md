@@ -60,7 +60,7 @@ Every obligation below is a test in `contract/`, named after its ID, run against
 | C6 | Each turn runs with the tools, skills, MCP servers and permissions of its active agent, and records which agent it was. History is shared across agents; capabilities are not: a tool call runs only if the current agent has that tool and permission. |
 | C7 | Between agent switches, the request prefix (system prompt + tool definitions, in order) is byte-identical across steps, so prompt caching holds; only a switch may change it. |
 | C8 | Each step appends one JSONL line to the conversation trace: input, tool calls, tool results (truncated), output, tokens, cost, duration. |
-| C9 | In ask mode (profile or conversation), each shell command waits for the owner's approval in the UI; in auto mode none does. The mode is read at execution. |
+| C9 | In ask mode (profile or conversation), each shell command waits for the owner's approval in the UI; in auto mode none does. The mode is read at execution. Every client is told which conversations wait for an approval. |
 | C10 | History is append-only. Past a size or on request, a traced mark clears old tool results or summarizes for the model; recent messages stay whole (C2 holds). |
 | C11 | Every failure (tool error, MCP crash, budget stop, denied approval) appears in the UI with a next step, never only in logs. |
 | C12 | `delegate` runs a listed subagent on its own model and tools with a fresh context plus its caller's brief (read-only), its shell mode the stricter of its and its caller's, and returns its final answer as one tool result. Subagents cannot delegate; their spend counts toward the parent's budget. The `agents` tool's run is the same, in the target's own workspace. |

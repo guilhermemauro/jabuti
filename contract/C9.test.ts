@@ -76,6 +76,29 @@ describe("C9: shell commands wait for approval in ask mode, none in auto mode", 
     expect(h.runtime.pendingEvents(h.conversationId)).toEqual([]);
   });
 
+  it("tells every client which conversation waits for the owner, until it is answered", async () => {
+    const h = harness({
+      script: twoCommands,
+      agents: [agent("assistant", { permissions: { shell: "ask" } })],
+      approvals: "wait",
+    });
+    const waiting = () => h.updates.filter((c) => c.id === h.conversationId).map((c) => c.waiting);
+    h.runtime.send(h.conversationId, "go");
+    await vi.waitFor(() => {
+      expect(waiting().at(-1)).toBe(1);
+    });
+    const [pending] = h.runtime.pendingEvents(h.conversationId);
+    if (pending?.type !== "approval.requested") throw new Error("no pending approval");
+    h.runtime.respondApproval(pending.approvalId, true);
+    // Answered, then the second command asks in its turn.
+    await vi.waitFor(() => {
+      expect(waiting().slice(-2)).toEqual([0, 1]);
+    });
+    h.runtime.cancel(h.conversationId);
+    await h.runtime.idle(h.conversationId);
+    expect(waiting().at(-1)).toBe(0);
+  });
+
   it("does not run anything when the shell is denied", async () => {
     const h = harness({
       script: twoCommands,

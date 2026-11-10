@@ -102,6 +102,12 @@ export function App(props: { onLogout: () => void; onSessionCheck: () => void })
     [send],
   );
   const waiting = inboxCount(state.plans);
+  // Approvals waiting for the owner, in every conversation (C9).
+  const asking = state.conversations.filter((c) => c.waiting > 0);
+  const asked = asking.reduce((n, c) => n + c.waiting, 0);
+  useEffect(() => {
+    document.title = asked > 0 ? `(${String(asked)}) Waiting for you · Jabuti` : "Jabuti";
+  }, [asked]);
   useEffect(() => {
     if (!state.notice) return;
     const timer = setTimeout(() => {
@@ -175,6 +181,11 @@ export function App(props: { onLogout: () => void; onSessionCheck: () => void })
             >
               <ChatIcon />
               Conversations
+              {asked > 0 && (
+                <span className="badge waiting" title="Approvals waiting for you">
+                  {asked}
+                </span>
+              )}
             </button>
             <button
               className={view === "plan" ? "active" : ""}
@@ -210,7 +221,10 @@ export function App(props: { onLogout: () => void; onSessionCheck: () => void })
             {state.conversations.map((c) => (
               <li key={c.id}>
                 <button
-                  className={c.id === open?.conversation.id && view === "chat" ? "active" : ""}
+                  className={[
+                    c.id === open?.conversation.id && view === "chat" ? "active" : "",
+                    c.waiting > 0 ? "waiting" : "",
+                  ].join(" ")}
                   onClick={() => {
                     setView("chat");
                     send({ type: "conversation.open", conversationId: c.id });
@@ -218,10 +232,10 @@ export function App(props: { onLogout: () => void; onSessionCheck: () => void })
                 >
                   <span className="session-title">{c.title}</span>
                   <span className="session-meta">
-                    <span className={`dot ${c.running ? "on" : ""}`} />
+                    <span className={`dot ${c.waiting > 0 ? "wait" : c.running ? "on" : ""}`} />
                     {c.agent}
                     {c.unattended && " · routine"}
-                    {c.running && " · working"}
+                    {c.waiting > 0 ? " · waiting for you" : c.running && " · working"}
                   </span>
                 </button>
               </li>
@@ -287,6 +301,24 @@ export function App(props: { onLogout: () => void; onSessionCheck: () => void })
             />
           ))}
 
+          {asking
+            .filter((c) => view !== "chat" || c.id !== open?.conversation.id)
+            .map((c) => (
+              <div key={c.id} className="waiting-banner" role="alert">
+                <span className="dot wait" />
+                <span>
+                  <strong>{c.agent}</strong> is waiting for your approval in “{c.title}”.
+                </span>
+                <button
+                  className="primary"
+                  onClick={() => {
+                    openConversation(c.id);
+                  }}
+                >
+                  Open
+                </button>
+              </div>
+            ))}
           {state.notice && <div className="notice">{state.notice}</div>}
           {state.memory.problem && <ProblemBox problem={state.memory.problem} />}
           <MemoryProposals proposals={state.memory.proposals} send={send} />
@@ -412,6 +444,7 @@ export function App(props: { onLogout: () => void; onSessionCheck: () => void })
                   send={send}
                 />
               </WorkspaceContext>
+              <ApprovalDock items={open.items} send={send} />
               <Composer
                 key={open.conversation.id}
                 agent={open.conversation.agent}
@@ -704,8 +737,6 @@ function ContextMarkView({ mark }: { mark: ContextMark }) {
 
 function ToolCard({ tool, send }: { tool: ToolItem; send: Send }) {
   const input = (tool.input ?? {}) as Record<string, unknown>;
-  const command =
-    typeof input["command"] === "string" ? input["command"] : JSON.stringify(tool.input);
   const pending = tool.approval?.state === "pending" && !tool.result;
   const status = tool.result ? (tool.result.isError ? "error" : "ok") : "running";
 
@@ -719,18 +750,7 @@ function ToolCard({ tool, send }: { tool: ToolItem; send: Send }) {
           {tool.subagentReason && tool.subagentReason !== "done" && ` (${tool.subagentReason})`}
         </div>
         <div className="task">{String(input["task"])}</div>
-        {pending && tool.approval && (
-          <Approval
-            action={tool.approval.action}
-            respond={(approved) => {
-              send({
-                type: "approval.respond",
-                approvalId: tool.approval?.approvalId ?? "",
-                approved,
-              });
-            }}
-          />
-        )}
+        {pending && <WaitingHere />}
         <div className="children">
           <Items items={tool.children} streaming={tool.streaming} send={send} />
         </div>
@@ -739,37 +759,10 @@ function ToolCard({ tool, send }: { tool: ToolItem; send: Send }) {
     );
   }
 
-  const title =
-    tool.name === "memory"
-      ? `✎ ${String(input["file"])}.md`
-      : tool.name === "agents"
-        ? agentsTitle(input)
-        : tool.name.startsWith("mcp__")
-          ? `⚡ ${tool.name.slice(5).replace("__", " · ")} ${mcpSummary(input)}`
-          : tool.name === "packages"
-            ? `📦 install ${(input["packages"] as string[] | undefined)?.join(" ") ?? ""}`
-            : tool.name === "web_read" || tool.name === "page_structure"
-              ? `🌐 ${tool.name === "web_read" ? "read" : "structure of"} ${String(input["url"])}`
-              : tool.name === "site_crawl"
-                ? `🕸 crawled ${String(input["url"])}`
-                : tool.name === "view_images"
-                  ? `🖼 looked at ${String((input["images"] as unknown[] | undefined)?.length ?? 0)} image(s)`
-                  : `$ ${command}`;
   return (
     <div className={`tool ${status}`}>
-      <pre className="command">{title}</pre>
-      {pending && tool.approval && (
-        <Approval
-          action={tool.approval.action}
-          respond={(approved) => {
-            send({
-              type: "approval.respond",
-              approvalId: tool.approval?.approvalId ?? "",
-              approved,
-            });
-          }}
-        />
-      )}
+      <pre className="command">{toolTitle(tool)}</pre>
+      {pending && <WaitingHere />}
       {tool.result && <pre className="output">{tool.result.content.trim()}</pre>}
       {tool.result?.images?.map((image, i) => (
         // What the agent's model saw (view_images, C21), from the server, never a third party.
@@ -788,6 +781,93 @@ function ToolCard({ tool, send }: { tool: ToolItem; send: Send }) {
         />
       ))}
     </div>
+  );
+}
+
+/** One line for a tool call: "$ ls", "📦 install git", "→ explorer". */
+function toolTitle(tool: ToolItem): string {
+  const input = (tool.input ?? {}) as Record<string, unknown>;
+  const command =
+    typeof input["command"] === "string" ? input["command"] : JSON.stringify(tool.input);
+  if (tool.name === "delegate") return `→ ${String(input["agent"])}`;
+  if (tool.name === "agents" && input["action"] === "run") return `⚙ run ${String(input["agent"])}`;
+  return tool.name === "memory"
+    ? `✎ ${String(input["file"])}.md`
+    : tool.name === "agents"
+      ? agentsTitle(input)
+      : tool.name.startsWith("mcp__")
+        ? `⚡ ${tool.name.slice(5).replace("__", " · ")} ${mcpSummary(input)}`
+        : tool.name === "packages"
+          ? `📦 install ${(input["packages"] as string[] | undefined)?.join(" ") ?? ""}`
+          : tool.name === "web_read" || tool.name === "page_structure"
+            ? `🌐 ${tool.name === "web_read" ? "read" : "structure of"} ${String(input["url"])}`
+            : tool.name === "site_crawl"
+              ? `🕸 crawled ${String(input["url"])}`
+              : tool.name === "view_images"
+                ? `🖼 looked at ${String((input["images"] as unknown[] | undefined)?.length ?? 0)} image(s)`
+                : `$ ${command}`;
+}
+
+/** In the transcript, where the call waits: the buttons are in the dock below. */
+function WaitingHere() {
+  return (
+    <div className="waiting-here">
+      <span className="dot wait" />
+      Waiting for your approval, below.
+    </div>
+  );
+}
+
+/** Calls waiting for the owner, subagents' included, with the agent that asks. */
+function pendingApprovals(
+  items: Item[],
+  agent?: string,
+): { tool: ToolItem; agent: string | undefined }[] {
+  return items.flatMap((item) => {
+    if (item.kind !== "tool") return [];
+    const own = item.approval?.state === "pending" && !item.result ? [{ tool: item, agent }] : [];
+    const input = (item.input ?? {}) as Record<string, unknown>;
+    const inner = typeof input["agent"] === "string" ? input["agent"] : agent;
+    return [...own, ...pendingApprovals(item.children, inner)];
+  });
+}
+
+/**
+ * Pinned above the composer while the conversation waits for the owner, so an
+ * approval is never left in a collapsed group or scrolled out of view (C9).
+ */
+function ApprovalDock({ items, send }: { items: Item[]; send: Send }) {
+  const pending = pendingApprovals(items);
+  if (pending.length === 0) return null;
+  return (
+    <section className="approval-dock" aria-label="Waiting for your approval">
+      <div className="dock-head">
+        <span className="dot wait" />
+        {pending.length === 1
+          ? "The agent is waiting for your approval"
+          : `${String(pending.length)} approvals waiting for you`}
+      </div>
+      {pending.map(({ tool, agent }) => (
+        <div key={tool.callId} className="dock-item">
+          <pre className="command">
+            {agent ? `${agent} · ` : ""}
+            {toolTitle(tool)}
+          </pre>
+          {tool.approval && (
+            <Approval
+              action={tool.approval.action}
+              respond={(approved) => {
+                send({
+                  type: "approval.respond",
+                  approvalId: tool.approval?.approvalId ?? "",
+                  approved,
+                });
+              }}
+            />
+          )}
+        </div>
+      ))}
+    </section>
   );
 }
 

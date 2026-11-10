@@ -3,7 +3,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { LoopEvent, MemoryProposal, Problem } from "@jabuti/protocol";
+import type { ConversationInfo, LoopEvent, MemoryProposal, Problem } from "@jabuti/protocol";
 import { AgentRegistry, type AgentProfile } from "../packages/server/src/agents/registry.ts";
 import { AgentState } from "../packages/server/src/agents/state.ts";
 import { Autopilot } from "../packages/server/src/autopilot/index.ts";
@@ -139,6 +139,7 @@ export function harness(options: {
     capture: (t: CaptureTrace) => captures.push(t),
   };
   const events: LoopEvent[] = [];
+  const updates: ConversationInfo[] = [];
   const db = openDatabase(":memory:");
   const store = new ConversationStore(db);
   const agents = options.registry ?? new AgentRegistry(options.agents ?? [agent("assistant")]);
@@ -210,7 +211,9 @@ export function harness(options: {
           queueMicrotask(() => runtime.respondApproval(event.approvalId, policy === "approve"));
         }
       },
-      conversationUpdated: () => undefined,
+      conversationUpdated: (conversation) => {
+        updates.push(conversation);
+      },
       catalogChanged: () => {
         catalogChanges++;
       },
@@ -236,6 +239,8 @@ export function harness(options: {
     traces,
     captures,
     events,
+    /** What every client was told about conversations, in order. */
+    updates,
     store,
     runtime,
     conversationId,

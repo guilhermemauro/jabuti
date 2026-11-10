@@ -151,6 +151,13 @@ input[type="radio"] {
 .dot.off {
   background: var(--error);
 }
+/* Waiting for the owner's approval (C9). */
+.dot.wait {
+  width: 8px;
+  height: 8px;
+  background: var(--warning);
+  animation: pulse 1.2s ease-in-out infinite;
+}
 @keyframes pulse {
   50% {
     opacity: 0.35;
@@ -284,6 +291,13 @@ input[type="radio"] {
 .sessions button.active {
   background: var(--surface-container-lowest);
   color: var(--on-surface);
+}
+.sessions button.waiting {
+  color: var(--on-surface);
+  box-shadow: inset 3px 0 0 var(--warning);
+}
+.sessions button.waiting .session-meta {
+  color: var(--warning);
 }
 .session-title {
   overflow: hidden;
@@ -758,6 +772,63 @@ main {
   border: none;
   background: none;
   color: inherit;
+}
+.waiting-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 20px 0;
+  padding: 10px 14px;
+  border-radius: var(--rounded-lg);
+  border-left: 3px solid var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface-container-lowest));
+  color: var(--on-surface);
+}
+.waiting-banner > span:not(.dot) {
+  flex: 1;
+}
+.approval-dock {
+  max-width: 896px;
+  width: calc(100% - 40px);
+  margin: 0 auto 8px;
+  max-height: 45vh;
+  overflow-y: auto;
+  padding: 12px 14px;
+  border-radius: var(--rounded-lg);
+  border: 1px solid var(--warning);
+  border-left-width: 3px;
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface-container-lowest));
+  box-shadow: var(--shadow-overlay);
+}
+.dock-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+.dock-item {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.dock-item .command {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.waiting-here {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--warning);
+  font-weight: 500;
+}
+.badge.waiting {
+  background: var(--warning);
 }
 .notice {
   margin: 8px 20px 0;

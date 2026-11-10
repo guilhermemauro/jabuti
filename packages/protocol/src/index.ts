@@ -630,6 +630,8 @@ export const ConversationInfo = z.object({
   /** The conversation's shell mode; null follows the agent's profile. */
   shellMode: ShellMode.nullable(),
   running: z.boolean(),
+  /** Approvals waiting for the owner, its subagents' included (C9). */
+  waiting: z.number(),
   /** Started by the agent's routine, with nobody watching (C19). */
   unattended: z.boolean(),
 });
