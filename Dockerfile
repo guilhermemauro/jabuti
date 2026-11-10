@@ -55,6 +55,13 @@ FROM base AS prod-deps
 RUN pnpm install --frozen-lockfile --ignore-scripts --prod --filter @jabuti/server... --filter @jabuti/mcp-serper --filter @jabuti/mcp-gsc --filter @jabuti/mcp-pagespeed --filter @jabuti/mcp-dataforseo --filter @jabuti/mcp-images --filter @jabuti/mcp-wikipedia
 
 FROM node:26-slim
+# Set by the release workflow; a build without them is "dev" (Settings → Version).
+ARG JABUTI_VERSION=dev
+ARG JABUTI_COMMIT=
+ARG JABUTI_REPOSITORY=guilhermemauro/jabuti
+ENV JABUTI_VERSION=$JABUTI_VERSION \
+    JABUTI_COMMIT=$JABUTI_COMMIT \
+    JABUTI_REPOSITORY=$JABUTI_REPOSITORY
 ENV NODE_ENV=production \
     JABUTI_HOST=0.0.0.0 \
     JABUTI_PORT=4317 \

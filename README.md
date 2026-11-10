@@ -128,9 +128,11 @@ Then:
    and save it there. Jabuti checks the record before saving, and Caddy gets its
    certificate on the first visit.
 
-To update, run `docker compose pull && docker compose up -d` in the folder with the
-compose file (`/opt/jabuti` for the script), or update the project in Hostinger's
-Docker Manager.
+**Settings → Version** shows the running version and, when a newer release exists,
+what changed and the command to update: `docker compose pull && docker compose up -d`
+in the folder with the compose file (`/opt/jabuti` for the script), or update the
+project in Hostinger's Docker Manager. To check, the server asks GitHub for the
+latest release twice a day, an anonymous request that sends nothing about the instance.
 
 Heroku and other platforms whose disk is wiped on restart do not fit: Jabuti keeps
 its database, notes and agents' workspaces on disk.

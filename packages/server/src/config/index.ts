@@ -3,6 +3,13 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
+/** Unset in a build from source. */
+export interface Build {
+  version?: string | undefined;
+  commit?: string | undefined;
+  repository?: string | undefined;
+}
+
 export interface Config {
   host: string;
   port: number;
@@ -22,6 +29,8 @@ export interface Config {
   runner: { url: string; tokenFile: string } | undefined;
   /** Colored log lines; off when NO_COLOR is set (https://no-color.org). */
   color: boolean;
+  /** What the release workflow baked into the image (Settings → Version). */
+  build: Build;
   /** API key per provider id. A provider without a key is listed as unavailable. */
   providerKeys: Partial<Record<string, string>>;
 }
@@ -53,6 +62,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         ? { file: env["JABUTI_SECRET_KEY_FILE"] }
         : undefined,
     sandboxImage: "python:3.13-slim",
+    build: {
+      version: nonEmpty(env["JABUTI_VERSION"]),
+      commit: nonEmpty(env["JABUTI_COMMIT"]),
+      repository: nonEmpty(env["JABUTI_REPOSITORY"]),
+    },
     runner: env["JABUTI_RUNNER_URL"]
       ? {
           url: env["JABUTI_RUNNER_URL"],
@@ -62,4 +76,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     color: env["NO_COLOR"] === undefined,
     providerKeys: keys,
   };
+}
+
+/** A Docker build arg left empty arrives as "": the same as unset. */
+function nonEmpty(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed === "" ? undefined : trimmed;
 }

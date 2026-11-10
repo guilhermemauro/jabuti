@@ -23,6 +23,7 @@ import { RunnerSandbox } from "./sandbox/runner.ts";
 import { Skills } from "./skills/index.ts";
 import { McpServers } from "./mcp/servers.ts";
 import { Domain } from "./domain/index.ts";
+import { Version } from "./version/index.ts";
 import { JsonlTracer } from "./tracer/index.ts";
 import { Hub } from "./ws/server.ts";
 
@@ -52,6 +53,7 @@ const mcp = new Mcp(
 const tracer = new JsonlTracer(join(config.dataDir, "traces"));
 const skills = new Skills([], config.skillsDirs);
 const domain = new Domain(db);
+const version = new Version(config.build);
 
 const hub = new Hub();
 const autopilot = new Autopilot(
@@ -112,6 +114,7 @@ hub.wire(
       mcpChanged: (name) => void mcp.forget(name),
       discover: (name, users) => mcp.discover(name, users),
       domain,
+      version,
       skills,
       warnings,
       state,
@@ -123,6 +126,7 @@ hub.wire(
 );
 capture.start();
 autopilot.start();
+version.start();
 const server = createApp({
   auth,
   hub,
