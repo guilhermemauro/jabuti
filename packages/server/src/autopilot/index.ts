@@ -232,13 +232,17 @@ export class Autopilot {
     if (!runtime || this.inFlight.has(agent)) return undefined;
     this.inFlight.add(agent);
     try {
+      // On act days Jabuti picks and starts the milestone, never the model (C19); before
+      // the conversation exists, so its prompt shows the milestone in progress.
+      const focus = kind === "act" ? this.deps.state.plans.startFocus(agent) : undefined;
       const plan = this.planOf(agent);
       const conversation = runtime.create(agent, { unattended: true });
       if (!("id" in conversation)) return undefined;
       onStart?.(conversation.id);
       const left = plan.routine.monthlyCapUsd - plan.monthSpentUsd;
-      const problem = runtime.send(conversation.id, task(kind, this.today(plan.routine.timeZone)), {
-        title: `Routine · ${kind} · ${this.today(plan.routine.timeZone)}`,
+      const today = this.today(plan.routine.timeZone);
+      const problem = runtime.send(conversation.id, task(kind, today, focus), {
+        title: `Routine · ${kind} · ${today}`,
         maxCostUsd: left,
       });
       if (problem) {
@@ -434,17 +438,25 @@ export class Autopilot {
 }
 
 /** What an unattended run is told; the plan and last reports are in its system prompt. */
-function task(kind: "measure" | "act", today: string): string {
+function task(
+  kind: "measure" | "act",
+  today: string,
+  focus?: { id: string; title: string } | { problem: string },
+): string {
   const common =
     `Routine run (${kind}), ${today}. Nobody is watching: anything that needs approval is ` +
     "refused and listed in the owner's inbox; do not retry it, move on. First record every " +
     "check due today from fresh data, with the plan tool, and update your milestones' progress.";
   const act =
-    kind === "act"
-      ? " Then, if the plan's limits allow, prepare the next change for the highest-priority " +
-        "running milestone: make it on a branch, push the branch, and propose it with the " +
-        "plan tool, with its hypothesis, metric and baseline. One good change beats several."
-      : " Do not propose changes today: measure, analyze and plan.";
+    !focus || kind === "measure"
+      ? " Do not propose changes today: measure, analyze and plan."
+      : "problem" in focus
+        ? ` ${focus.problem} Do not propose changes today: measure, analyze and say what ` +
+          "waits for the owner."
+        : ` Then, if the plan's limits allow, prepare the next change for ${focus.id} ` +
+          `(${focus.title}), the milestone Jabuti picked from the owner's priorities: make it ` +
+          "on a branch, push the branch, and propose it with the plan tool, with its " +
+          "hypothesis, metric and baseline. One good change beats several.";
   return (
     common +
     act +
