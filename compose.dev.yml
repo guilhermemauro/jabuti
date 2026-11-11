@@ -39,6 +39,10 @@ services:
         - action: rebuild
           path: packages/mcp-gsc/package.json
         - action: rebuild
+          path: packages/mcp-ga4/package.json
+        - action: rebuild
+          path: packages/google-auth/package.json
+        - action: rebuild
           path: packages/mcp-pagespeed/package.json
         - action: rebuild
           path: packages/mcp-dataforseo/package.json

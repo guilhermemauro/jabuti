@@ -43,7 +43,7 @@ agent may do.
   and the shell never inherits them, unless you mark a variable for an agent's shell.
 
 - **Connect anything that speaks MCP.** Use the built-in connectors (Google Search
-  Console, PageSpeed, Serper, DataForSEO, Wikipedia, image generation) or register any
+  Console, Google Analytics 4, PageSpeed, Serper, DataForSEO, Wikipedia, image generation) or register any
   remote MCP server from the interface, with a token header or an OAuth login. You
   pick which of its tools agents get and which ask you before each call.
 
@@ -243,7 +243,7 @@ hand.
 |                    |                                                                                                                                                                                                                                                                    |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Built-in tools** | `shell`, `packages` (system packages, approved each time), `web_read`, `page_structure`, `site_crawl`, `view_images`, `delegate` (subagents), `memory` (brief and notes), `plan` (milestones, experiments, routines), `agents` (manage agents and skills), `skill` |
-| **Connectors**     | `gsc`, `pagespeed`, `serper`, `dataforseo`, `wikipedia`, `nanobanana`, `gptimage`, plus any remote MCP server you register                                                                                                                                         |
+| **Connectors**     | `gsc`, `ga4`, `pagespeed`, `serper`, `dataforseo`, `wikipedia`, `nanobanana`, `gptimage`, plus any remote MCP server you register                                                                                                                                  |
 | **Skills**         | `data-study` (turn company or public data into a study others cite), plus your own                                                                                                                                                                                 |
 | **Models**         | Claude Opus, Sonnet, Haiku and Fable, through a provider-neutral loop: a provider SDK is imported only in its adapter folder                                                                                                                                       |
 

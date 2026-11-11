@@ -44,6 +44,20 @@ export const CONNECTORS: ConnectorSpec[] = [
     args: [join(PACKAGES, "mcp-gsc/src/index.ts")],
   },
   {
+    name: "ga4",
+    description:
+      "Google Analytics 4, read-only: any report of its dimensions and metrics (custom " +
+      "events, key events and revenue included) as CSV files in the workspace, such as " +
+      "sessions, key events and sales by landing page.",
+    variables: ["GA4_SERVICE_ACCOUNT"],
+    help: {
+      GA4_SERVICE_ACCOUNT:
+        "A Google Cloud service account's JSON key; the one used for Search Console works. In https://console.cloud.google.com, enable the Google Analytics Data API and the Google Analytics Admin API in its project, and paste the whole JSON file here. Then, in Google Analytics → Admin → Property access management, add the client_email from that file as a Viewer.",
+    },
+    command: process.execPath,
+    args: [join(PACKAGES, "mcp-ga4/src/index.ts")],
+  },
+  {
     name: "pagespeed",
     description:
       "Google PageSpeed Insights: Lighthouse scores, Core Web Vitals in the lab and from " +
