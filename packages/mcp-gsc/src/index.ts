@@ -1,111 +1,41 @@
 // MCP server for Google Search Console (stdio), read-only. Jabuti starts one per agent
 // that uses it, with that agent's GSC_SERVICE_ACCOUNT (the service account's JSON key)
 // in its environment; the key never reaches the model (C5, C16). The token comes from
-// a JWT signed here with node:crypto, so no Google library is needed.
+// a JWT signed with node:crypto (@jabuti/google-auth), so no Google library is needed.
 //
 // Search analytics rows go back as a CSV file, which Jabuti saves in the agent's
 // workspace for its shell (C5); the model reads a summary and a few rows.
 //
 // GSC_API_URL and GSC_TOKEN_URL override Google's endpoints, for tests against a fake.
-import { createHash, createSign } from "node:crypto";
+import { createHash } from "node:crypto";
+import { GoogleError, ServiceAccountAuth } from "@jabuti/google-auth";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-const RAW_KEY = process.env["GSC_SERVICE_ACCOUNT"] ?? "";
 const API = process.env["GSC_API_URL"];
 const WEBMASTERS = `${API ?? "https://www.googleapis.com"}/webmasters/v3`;
 const INSPECTION = `${API ?? "https://searchconsole.googleapis.com"}/v1`;
-const TOKEN_URL = process.env["GSC_TOKEN_URL"] ?? "https://oauth2.googleapis.com/token";
-const SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
-const TIMEOUT_MS = 60_000;
 /** Google's maximum per request; more rows take more requests. */
 const PAGE_ROWS = 25_000;
 const PREVIEW_ROWS = 10;
 
-const ServiceAccount = z.object({ client_email: z.string(), private_key: z.string() });
-
-class GscError extends Error {}
-
-// --- Auth ---
-
-let cached: { token: string; until: number } | undefined;
-
-function account(): z.infer<typeof ServiceAccount> {
-  if (!RAW_KEY) throw new GscError("GSC_SERVICE_ACCOUNT is not set for this agent.");
-  let json: unknown;
-  try {
-    json = JSON.parse(RAW_KEY);
-  } catch {
-    throw new GscError(
-      "GSC_SERVICE_ACCOUNT is not JSON. Paste the whole key file in Settings → Variables.",
-    );
-  }
-  const parsed = ServiceAccount.safeParse(json);
-  if (!parsed.success) {
-    throw new GscError(
-      "GSC_SERVICE_ACCOUNT has no client_email or private_key: use a service account's JSON key.",
-    );
-  }
-  return parsed.data;
-}
-
-async function token(): Promise<string> {
-  if (cached && Date.now() < cached.until) return cached.token;
-  const { client_email, private_key } = account();
-  const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
-  const now = Math.floor(Date.now() / 1000);
-  const claims = { iss: client_email, scope: SCOPE, aud: TOKEN_URL, iat: now, exp: now + 3600 };
-  const unsigned = `${b64({ alg: "RS256", typ: "JWT" })}.${b64(claims)}`;
-  let signature: string;
-  try {
-    signature = createSign("RSA-SHA256").update(unsigned).sign(private_key, "base64url");
-  } catch {
-    throw new GscError("The private_key in GSC_SERVICE_ACCOUNT is not a valid key.");
-  }
-  const res = await request(TOKEN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion: `${unsigned}.${signature}`,
-    }),
-  });
-  const body = (await res.json().catch(() => ({}))) as {
-    access_token?: string;
-    expires_in?: number;
-  };
-  if (!res.ok || !body.access_token) {
-    throw new GscError(
-      `Google refused the service account (HTTP ${String(res.status)}). Check that the key is ` +
-        "current and the Search Console API is enabled in its Google Cloud project.",
-    );
-  }
-  // A minute early, so a token never expires mid-request.
-  cached = {
-    token: body.access_token,
-    until: Date.now() + ((body.expires_in ?? 3600) - 60) * 1000,
-  };
-  return cached.token;
-}
+const auth = new ServiceAccountAuth({
+  variable: "GSC_SERVICE_ACCOUNT",
+  raw: process.env["GSC_SERVICE_ACCOUNT"] ?? "",
+  scope: "https://www.googleapis.com/auth/webmasters.readonly",
+  tokenUrl: process.env["GSC_TOKEN_URL"] ?? "https://oauth2.googleapis.com/token",
+  api: "the Search Console API",
+  timeoutMs: 60_000,
+});
 
 // --- Calls ---
 
-async function request(url: string, init: RequestInit): Promise<Response> {
-  try {
-    return await fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) });
-  } catch (error) {
-    throw new GscError(
-      `Google did not answer: ${error instanceof Error ? error.message : "error"}.`,
-    );
-  }
-}
-
 async function call(url: string, site: string, body?: object): Promise<unknown> {
-  const res = await request(url, {
+  const res = await auth.request(url, {
     method: body ? "POST" : "GET",
     headers: {
-      Authorization: `Bearer ${await token()}`,
+      Authorization: `Bearer ${await auth.token()}`,
       ...(body ? { "Content-Type": "application/json" } : {}),
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
@@ -114,19 +44,19 @@ async function call(url: string, site: string, body?: object): Promise<unknown> 
   if (res.ok) return json;
   const detail = (json as { error?: { message?: string } } | undefined)?.error?.message ?? "";
   if (res.status === 401 || res.status === 403) {
-    throw new GscError(
-      `No access to ${site}: ${detail} Add ${account().client_email} as a user of the ` +
+    throw new GoogleError(
+      `No access to ${site}: ${detail} Add ${auth.email()} as a user of the ` +
         "property in Search Console → Settings → Users and permissions, or list the sites " +
         "it can read with the sites tool.",
     );
   }
   if (res.status === 429) {
-    throw new GscError(
+    throw new GoogleError(
       `Search Console quota exceeded: ${detail} Wait 15 minutes; group by fewer of page and ` +
         "query, or use a shorter period.",
     );
   }
-  throw new GscError(`Search Console answered HTTP ${String(res.status)}: ${detail}`);
+  throw new GoogleError(`Search Console answered HTTP ${String(res.status)}: ${detail}`);
 }
 
 const site = (s: string) => encodeURIComponent(s);
@@ -157,7 +87,7 @@ server.registerTool(
       const sites = body.siteEntry ?? [];
       if (sites.length === 0) {
         return text(
-          `No properties yet. Add ${account().client_email} as a user in Search Console → ` +
+          `No properties yet. Add ${auth.email()} as a user in Search Console → ` +
             "Settings → Users and permissions.",
         );
       }
@@ -243,7 +173,7 @@ server.registerTool(
   },
   (input) =>
     run(async () => {
-      if (input.startDate > input.endDate) throw new GscError("startDate is after endDate.");
+      if (input.startDate > input.endDate) throw new GoogleError("startDate is after endDate.");
       const query = {
         startDate: input.startDate,
         endDate: input.endDate,
@@ -403,7 +333,7 @@ async function run<T>(work: () => Promise<T>) {
   try {
     return await work();
   } catch (error) {
-    if (!(error instanceof GscError)) throw error;
+    if (!(error instanceof GoogleError)) throw error;
     return { content: [{ type: "text" as const, text: error.message }], isError: true };
   }
 }
