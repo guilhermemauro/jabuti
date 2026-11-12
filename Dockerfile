@@ -12,6 +12,7 @@ COPY packages/runner/package.json packages/runner/
 COPY packages/mcp-serper/package.json packages/mcp-serper/
 COPY packages/mcp-gsc/package.json packages/mcp-gsc/
 COPY packages/mcp-ga4/package.json packages/mcp-ga4/
+COPY packages/mcp-bing/package.json packages/mcp-bing/
 COPY packages/google-auth/package.json packages/google-auth/
 COPY packages/mcp-pagespeed/package.json packages/mcp-pagespeed/
 COPY packages/mcp-dataforseo/package.json packages/mcp-dataforseo/
@@ -54,7 +55,7 @@ HEALTHCHECK --interval=30s --timeout=5s \
 CMD ["node", "src/index.ts"]
 
 FROM base AS prod-deps
-RUN pnpm install --frozen-lockfile --ignore-scripts --prod --filter @jabuti/server... --filter @jabuti/mcp-serper --filter @jabuti/mcp-gsc --filter @jabuti/mcp-ga4 --filter @jabuti/google-auth --filter @jabuti/mcp-pagespeed --filter @jabuti/mcp-dataforseo --filter @jabuti/mcp-images --filter @jabuti/mcp-wikipedia
+RUN pnpm install --frozen-lockfile --ignore-scripts --prod --filter @jabuti/server... --filter @jabuti/mcp-serper --filter @jabuti/mcp-gsc --filter @jabuti/mcp-ga4 --filter @jabuti/mcp-bing --filter @jabuti/google-auth --filter @jabuti/mcp-pagespeed --filter @jabuti/mcp-dataforseo --filter @jabuti/mcp-images --filter @jabuti/mcp-wikipedia
 
 FROM node:26-slim
 # Set by the release workflow; a build without them is "dev" (Settings → Version).
@@ -75,6 +76,7 @@ COPY packages/server packages/server
 COPY packages/mcp-serper packages/mcp-serper
 COPY packages/mcp-gsc packages/mcp-gsc
 COPY packages/mcp-ga4 packages/mcp-ga4
+COPY packages/mcp-bing packages/mcp-bing
 COPY packages/google-auth packages/google-auth
 COPY packages/mcp-pagespeed packages/mcp-pagespeed
 COPY packages/mcp-dataforseo packages/mcp-dataforseo
