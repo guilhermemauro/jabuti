@@ -58,6 +58,20 @@ export const CONNECTORS: ConnectorSpec[] = [
     args: [join(PACKAGES, "mcp-ga4/src/index.ts")],
   },
   {
+    name: "bing",
+    description:
+      "Bing Webmaster Tools, read-only: clicks, impressions and position by query and page " +
+      "as CSV files in the workspace, URL details, crawl stats and issues, sitemaps. Its AI " +
+      "Performance report (Copilot citations) has no API yet: the agent asks for its CSV.",
+    variables: ["BING_WEBMASTER_API_KEY"],
+    help: {
+      BING_WEBMASTER_API_KEY:
+        "In https://www.bing.com/webmasters, open Settings → API access and generate an API key. It belongs to your Bing user and reads every site you verified there.",
+    },
+    command: process.execPath,
+    args: [join(PACKAGES, "mcp-bing/src/index.ts")],
+  },
+  {
     name: "pagespeed",
     description:
       "Google PageSpeed Insights: Lighthouse scores, Core Web Vitals in the lab and from " +
