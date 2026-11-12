@@ -3,3 +3,7 @@ packages:
   - contract
 allowBuilds:
   lefthook: true
+# GHSA-g3hv-75wg-m249 (minimatch < 11.0.1, ReDoS). Only ESLint uses it, and its
+# packages still ask for ^10; drop this once they move to 11.
+overrides:
+  minimatch: ^11.0.1
