@@ -250,6 +250,7 @@ export class Hub implements RuntimeListener, CaptureListener, AutopilotListener 
       case "agent.save":
       case "agent.delete":
       case "agents.reload":
+      case "agent.template":
       case "skill.save":
       case "skill.delete":
       case "mcp.save":

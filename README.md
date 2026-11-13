@@ -133,6 +133,9 @@ what changed and the command to update: `docker compose pull && docker compose u
 in the folder with the compose file (`/opt/jabuti` for the script), or update the
 project in Hostinger's Docker Manager. To check, the server asks GitHub for the
 latest release twice a day, an anonymous request that sends nothing about the instance.
+An update also improves the agents made from Jabuti's templates: a prompt or settings
+you never edited are updated on their own; ones you edited show the template's changes
+in **Settings → Agents**, for you to use or keep yours.
 
 Heroku and other platforms whose disk is wiped on restart do not fit: Jabuti keeps
 its database, notes and agents' workspaces on disk.

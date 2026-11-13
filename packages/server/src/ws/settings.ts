@@ -54,6 +54,7 @@ type SettingsMessage = Extract<
       | "agent.save"
       | "agent.delete"
       | "agents.reload"
+      | "agent.template"
       | "skill.save"
       | "skill.delete"
       | "mcp.save"
@@ -185,6 +186,16 @@ export function handleSettings(message: SettingsMessage, deps: SettingsDeps): Se
       if (problem) return { problem, catalogChanged: false };
       return saved(`Deleted agent ${message.name}. Its brief, memory and files were kept.`, true);
     }
+    case "agent.template": {
+      const problem = agents.decideTemplate(message.name, message.file, message.apply);
+      if (problem) return { problem, catalogChanged: false };
+      return saved(
+        message.apply
+          ? `Updated ${message.name}'s ${message.file} from its template. It applies from the next turn.`
+          : `Kept ${message.name}'s ${message.file}.`,
+        message.apply,
+      );
+    }
     case "agents.reload":
       agents.reload();
       return saved("Agents reloaded from disk.", true);
@@ -226,6 +237,7 @@ export function snapshot(deps: SettingsDeps): SettingsSnapshot {
   return {
     agents: deps.agents.profiles(),
     templates: deps.agents.templates(),
+    templateUpdates: deps.agents.templateUpdates(),
     variables: deps.settings.variables(),
     providerKeys: deps.settings.providerKeys(deps.providers.providerIds()),
     connectors: connectors(deps),

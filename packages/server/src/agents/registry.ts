@@ -5,7 +5,9 @@
 // the brief, memory and workspace, which belong to agents/state.ts.
 //
 // The repository's agents/ folder holds templates: copied in on first start, and
-// offered as starting points for new agents.
+// offered as starting points for new agents. An agent made from one keeps following
+// it (C22): .template.json in its folder names the template and the template's version
+// each file derives from, so an update replaces only the files the owner never changed.
 import {
   cpSync,
   existsSync,
@@ -17,6 +19,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import {
   AGENT_NAME,
@@ -25,8 +28,10 @@ import {
   type AgentProfileData,
   type Problem,
   type ShellPermission,
+  type TemplateUpdate,
 } from "@jabuti/protocol";
 import { z } from "zod";
+import { lineDiff } from "../tools/memory.ts";
 
 export type { ShellPermission };
 export type AgentProfile = AgentProfileData;
@@ -34,6 +39,8 @@ export type AgentProfile = AgentProfileData;
 export class AgentRegistry {
   private agents = new Map<string, AgentProfile>();
   private loadProblems: Problem[] = [];
+  /** Files updated from their template at this start, shown to the owner until restart. */
+  private applied: TemplateUpdate[] = [];
   private readonly dir: string | undefined;
   private readonly templatesDir: string | undefined;
 
@@ -48,6 +55,7 @@ export class AgentRegistry {
     const registry = new AgentRegistry([], { dir, templatesDir });
     registry.seed();
     registry.reload();
+    registry.followTemplates();
     return registry;
   }
 
@@ -104,6 +112,51 @@ export class AgentRegistry {
     writeAtomic(join(folder, "agent.json"), `${JSON.stringify(json, null, 2)}\n`);
     writeAtomic(join(folder, "system.md"), system);
     this.agents.set(name, profile);
+    if (create) this.recordOrigin(profile);
+    return undefined;
+  }
+
+  /** Each template's newer file the owner has to decide on, then those applied at this start. */
+  templateUpdates(): TemplateUpdate[] {
+    const templates = this.templateMap();
+    const available: TemplateUpdate[] = [];
+    for (const agent of this.agents.values()) {
+      const origin = this.origin(agent.name);
+      const template = origin && templates.get(origin.template);
+      if (!origin || !template) continue;
+      for (const file of FILES) {
+        const current = fileText(agent, file);
+        const next = fileText(template, file);
+        if (current === next || origin[file] === digest(next)) continue;
+        available.push({
+          agent: agent.name,
+          template: template.name,
+          file,
+          diff: lineDiff(current, next),
+          status: "available",
+        });
+      }
+    }
+    return [...available, ...this.applied];
+  }
+
+  /**
+   * The owner's answer to an available update: apply writes the template's file over
+   * theirs; keep leaves theirs and stops offering this version of the template.
+   */
+  decideTemplate(name: string, file: TemplateFile, apply: boolean): Problem | undefined {
+    const agent = this.agents.get(name);
+    const origin = this.origin(name);
+    const template = origin && this.templateMap().get(origin.template);
+    if (!agent || !origin || !template) {
+      return { message: `No template update for "${name}".`, nextStep: "Reload Settings." };
+    }
+    if (apply) {
+      const problem = this.save(withTemplateFile(agent, template, file), false);
+      if (problem) return problem;
+    }
+    origin[file] = digest(fileText(template, file));
+    this.writeOrigin(name, origin);
     return undefined;
   }
 
@@ -123,6 +176,7 @@ export class AgentRegistry {
     }
     rmSync(join(this.dir, name, "agent.json"), { force: true });
     rmSync(join(this.dir, name, "system.md"), { force: true });
+    rmSync(join(this.dir, name, ORIGIN), { force: true });
     this.agents.delete(name);
     return undefined;
   }
@@ -157,6 +211,82 @@ export class AgentRegistry {
         }
       }
     }
+  }
+
+  /**
+   * At start, after an upgrade: a file still identical to the template version it came
+   * from takes the new version; a file the owner changed waits for them
+   * (templateUpdates). An agent named after a template with no record, from before this
+   * existed, follows it from now on, its changed files offered rather than replaced.
+   */
+  private followTemplates() {
+    if (!this.dir) return;
+    const templates = this.templateMap();
+    for (const agent of [...this.agents.values()]) {
+      const origin =
+        this.origin(agent.name) ??
+        (templates.has(agent.name)
+          ? { template: agent.name, "system.md": null, "agent.json": null }
+          : undefined);
+      const template = origin && templates.get(origin.template);
+      if (!origin || !template) continue;
+      let profile = agent;
+      for (const file of FILES) {
+        const current = fileText(profile, file);
+        const next = digest(fileText(template, file));
+        if (digest(current) === next) {
+          origin[file] = next;
+        } else if (origin[file] === digest(current)) {
+          const updated = withTemplateFile(profile, template, file);
+          // A template naming a subagent this instance lacks waits for the owner instead.
+          if (updated.subagents.some((s) => !this.agents.has(s))) continue;
+          this.applied.push({
+            agent: agent.name,
+            template: template.name,
+            file,
+            diff: lineDiff(current, fileText(template, file)),
+            status: "applied",
+          });
+          profile = updated;
+          origin[file] = next;
+        }
+      }
+      if (profile !== agent) this.save(profile, false);
+      this.writeOrigin(agent.name, origin);
+    }
+  }
+
+  /** A new agent whose prompt or settings are a template's follows that template. */
+  private recordOrigin(profile: AgentProfile) {
+    for (const template of this.templateMap().values()) {
+      const same = FILES.some((f) => fileText(profile, f) === fileText(template, f));
+      if (!same) continue;
+      this.writeOrigin(profile.name, {
+        template: template.name,
+        "system.md": digest(fileText(template, "system.md")),
+        "agent.json": digest(fileText(template, "agent.json")),
+      });
+      return;
+    }
+  }
+
+  private templateMap(): Map<string, AgentProfile> {
+    return new Map(this.templates().map((t) => [t.name, t]));
+  }
+
+  private origin(name: string): Origin | undefined {
+    if (!this.dir) return undefined;
+    try {
+      return Origin.parse(JSON.parse(readFileSync(join(this.dir, name, ORIGIN), "utf8")));
+    } catch {
+      // Missing, or broken by a hand edit: the agent no longer follows a template.
+      return undefined;
+    }
+  }
+
+  private writeOrigin(name: string, origin: Origin) {
+    if (!this.dir) return;
+    writeAtomic(join(this.dir, name, ORIGIN), `${JSON.stringify(origin, null, 2)}\n`);
   }
 
   private file(name: string): string {
@@ -197,6 +327,39 @@ function readProfiles(dir: string): { agents: Map<string, AgentProfile>; problem
     }
   }
   return { agents, problems };
+}
+
+type TemplateFile = TemplateUpdate["file"];
+const FILES: readonly TemplateFile[] = ["system.md", "agent.json"];
+const ORIGIN = ".template.json";
+
+/** The template an agent follows, and the digest of the template's file each of its files came from; null when unknown. */
+const Origin = z.object({
+  template: z.string(),
+  "system.md": z.string().nullable(),
+  "agent.json": z.string().nullable(),
+});
+type Origin = z.infer<typeof Origin>;
+
+/** The file as the registry writes it, so equal settings compare equal whatever their spacing on disk. */
+function fileText(profile: AgentProfile, file: TemplateFile): string {
+  if (file === "system.md") return profile.system;
+  const { name: _name, system: _system, ...json } = profile;
+  return `${JSON.stringify(AgentJson.parse(json), null, 2)}\n`;
+}
+
+function withTemplateFile(
+  profile: AgentProfile,
+  template: AgentProfile,
+  file: TemplateFile,
+): AgentProfile {
+  return file === "system.md"
+    ? { ...profile, system: template.system }
+    : { ...template, name: profile.name, system: profile.system };
+}
+
+function digest(text: string): string {
+  return createHash("sha256").update(text).digest("hex");
 }
 
 function writeAtomic(path: string, content: string) {

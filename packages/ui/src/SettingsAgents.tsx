@@ -6,6 +6,7 @@ import type {
   ClientMessage,
   ModelInfo,
   SettingsSnapshot,
+  TemplateUpdate,
   ToolName,
   VariableInfo,
 } from "@jabuti/protocol";
@@ -174,6 +175,9 @@ export function Agents(props: { settings: SettingsSnapshot; models: ModelInfo[];
         <ul className="list">
           {settings.agents.map((a) => {
             const issues = attention(a, settings, models).length;
+            const update = settings.templateUpdates.some(
+              (u) => u.agent === a.name && u.status === "available",
+            );
             return (
               <li key={a.name}>
                 <button
@@ -190,6 +194,11 @@ export function Agents(props: { settings: SettingsSnapshot; models: ModelInfo[];
                     {a.name}
                     <span className="sub mono">{a.model}</span>
                   </span>
+                  {update && (
+                    <span className="issues" title="Its template has an update for you to review">
+                      ↑
+                    </span>
+                  )}
                   {issues > 0 && (
                     <span
                       className="issues"
@@ -297,6 +306,10 @@ function AgentPage(props: {
           <div className="sub">{profile.description}</div>
         </div>
       </header>
+      <TemplateUpdates
+        updates={settings.templateUpdates.filter((u) => u.agent === profile.name)}
+        send={send}
+      />
       {issues.length > 0 && (
         <div className="attention" role="status">
           <strong>
@@ -364,6 +377,67 @@ function AgentPage(props: {
       {section === "variables" && (
         <VariablesSection profile={profile} settings={settings} send={send} />
       )}
+    </div>
+  );
+}
+
+/**
+ * A newer template (C22): applied ones are shown so the owner sees what changed; the
+ * ones they edited wait for them, with what applying would change in their file.
+ */
+function TemplateUpdates(props: { updates: TemplateUpdate[]; send: Send }) {
+  if (props.updates.length === 0) return null;
+  return (
+    <div className="template-updates">
+      {props.updates.map((u) => (
+        <details
+          key={`${u.file}-${u.status}`}
+          className="attention"
+          open={u.status === "available"}
+        >
+          <summary>
+            <strong>
+              {u.status === "applied"
+                ? `${u.file} was updated from the ${u.template} template.`
+                : `The ${u.template} template has a new ${u.file}, and you edited yours.`}
+            </strong>
+          </summary>
+          {u.status === "available" && (
+            <p className="sub">
+              Lines with − are yours and would go; lines with + come from the template.
+            </p>
+          )}
+          <pre className="diff">
+            {u.diff.split("\n").map((line, i) => (
+              <div
+                key={i}
+                className={line.startsWith("+") ? "add" : line.startsWith("-") ? "del" : ""}
+              >
+                {line}
+              </div>
+            ))}
+          </pre>
+          {u.status === "available" && (
+            <div className="row">
+              <button
+                className="primary"
+                onClick={() => {
+                  props.send({ type: "agent.template", name: u.agent, file: u.file, apply: true });
+                }}
+              >
+                Use the template's
+              </button>
+              <button
+                onClick={() => {
+                  props.send({ type: "agent.template", name: u.agent, file: u.file, apply: false });
+                }}
+              >
+                Keep mine
+              </button>
+            </div>
+          )}
+        </details>
+      ))}
     </div>
   );
 }
