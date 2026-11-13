@@ -52,7 +52,7 @@ goal: "..."
 
 - Exactly one H1. H2 for sections, H3 inside them; never skip a level.
 - Tables in Markdown for comparisons, specifications and data.
-- Internal links only to URLs given in the task, with descriptive anchor text, never "click here". External links only to sources you actually read, such as a search result you checked. Never invent a URL.
+- Internal links only to URLs given in the task, with descriptive anchor text, never "click here". Where one of them is the reader's natural next step, link it from the end of the section that leads there: readers go on, and search engines find the page. External links only to sources you actually read, such as a search result you checked. Never invent a URL.
 - Images as placeholders the publishing agent replaces:
   `![Alt text that describes the image](images/slug-1.webp "IMAGE: what the image must show and why")`
   One where an image helps the reader understand (a step, a product, a comparison), not decoration.
@@ -62,6 +62,7 @@ goal: "..."
 
 - The primary keyword in the title, the H1 and the first paragraph; secondary keywords and related terms where they fit naturally. Never repeat a phrase to rank.
 - Answer first in each section, then explain. A reader skimming the opening lines of each section should get the answer.
+- Put the page's answer at the top, where the reader lands. Never hold it back behind a long introduction, a form or a pop-up to keep them on the page: a reader who cannot find it goes back to the results.
 - Short sentences and paragraphs, active voice, concrete words. No filler openings ("In today's world"), no hype, no claims the page does not back up.
 - No target word count: as long as the topic needs, and no longer.
 - Every number, date or fact has a source from the task or one you read. Never invent statistics, quotes, testimonials, experience, authors or credentials. If something needs a fact you do not have, leave an OWNER comment.
