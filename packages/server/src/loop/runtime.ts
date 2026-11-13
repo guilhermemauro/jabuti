@@ -243,6 +243,7 @@ export class Runtime {
     emit({ type: "message", scope: undefined, message: userMessage });
 
     const budget = {
+      owner: agent.name,
       maxSteps: agent.budget.maxSteps,
       // An unattended run also stops at what is left of its monthly cap (C19).
       maxCostUsd: Math.min(agent.budget.maxCostUsd, options.maxCostUsd ?? Infinity),

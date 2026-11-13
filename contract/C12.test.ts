@@ -107,6 +107,25 @@ describe("C12: delegate runs a subagent with its own profile and a fresh context
     expect(end.steps).toBe(4);
   });
 
+  it("names the parent's budget when a subagent runs out of it", async () => {
+    // The explorer never stops on its own: the parent's 10 steps end it.
+    const looping: Script = (request) =>
+      request.system === "You explore."
+        ? { calls: [{ name: "shell", input: { command: "ls" } }] }
+        : script(request, 0);
+    const h = harness({ script: looping, agents: [assistant, explorer] });
+    await h.turn("how many files?");
+    const result = h
+      .history()
+      .flatMap<AssistantPart | UserPart>((m) => m.parts)
+      .find((p) => p.type === "tool_result" && p.isError);
+    // C11: the next step reaches the result, and it names the budget that ran out.
+    const text = result?.type === "tool_result" ? result.content : "";
+    expect(text).toContain('Next step: Send a message to let it continue, or raise "Max steps');
+    expect(text).toContain("Settings → Agents → assistant");
+    expect(text).not.toContain("→ explorer");
+  });
+
   it("refuses an agent that is not listed as a subagent", async () => {
     const h = harness({
       script: (_, i) =>
