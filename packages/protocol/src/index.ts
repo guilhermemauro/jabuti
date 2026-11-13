@@ -561,10 +561,23 @@ export const VersionInfo = z.object({
 });
 export type VersionInfo = z.infer<typeof VersionInfo>;
 
+/** A template's newer version of an agent's file (C22). */
+export const TemplateUpdate = z.object({
+  agent: z.string(),
+  template: z.string(),
+  file: z.enum(["system.md", "agent.json"]),
+  /** Lines of the agent's file now against the template's: "- " removed, "+ " added. */
+  diff: z.string(),
+  /** applied: written at this start, the owner had not changed the file. available: the owner decides. */
+  status: z.enum(["applied", "available"]),
+});
+export type TemplateUpdate = z.infer<typeof TemplateUpdate>;
+
 export const SettingsSnapshot = z.object({
   agents: z.array(AgentProfileData),
   /** Starting points for a new agent (the repository's agents/ folder). */
   templates: z.array(AgentProfileData),
+  templateUpdates: z.array(TemplateUpdate),
   variables: z.array(VariableInfo),
   providerKeys: z.array(ProviderKeyInfo),
   /** The built-in connectors and the registered servers, as agents list them (C5). */
@@ -817,6 +830,13 @@ export const ClientMessage = z.discriminatedUnion("type", [
     create: z.boolean(),
   }),
   z.object({ type: z.literal("agent.delete"), name: z.string() }),
+  /** A template update the owner changed: apply the template's file, or keep theirs (C22). */
+  z.object({
+    type: z.literal("agent.template"),
+    name: z.string(),
+    file: z.enum(["system.md", "agent.json"]),
+    apply: z.boolean(),
+  }),
   /** Re-reads agents/<name>/ from disk after editing the files by hand. */
   z.object({ type: z.literal("agents.reload") }),
   /** Writes the owner's skill (C4); a built-in's name makes the owner's version of it. */

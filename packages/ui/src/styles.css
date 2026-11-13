@@ -1446,6 +1446,19 @@ legend {
 .subtabs {
   align-self: flex-start;
 }
+.template-updates {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.template-updates summary {
+  cursor: pointer;
+}
+.template-updates .diff {
+  margin: 8px 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
 .agent-section {
   display: flex;
   flex-direction: column;

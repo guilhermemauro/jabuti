@@ -73,6 +73,7 @@ Every obligation below is a test in `contract/`, named after its ID, run against
 | C19 | An agent sees only milestones the owner approved, never sets their goal, and marks one done only on evidence. Each published change is an experiment with an approved baseline; Jabuti refuses one on a locked or control page, past the proposal cap or in a rejection's cooldown, and records a check only once due. Routine runs: on the milestone Jabuti picks (first by priority, dependencies done); approvals refused and listed in the inbox, notes marked auto, the final answer the report, a monthly cap. Only the runner holds the deploy key: Jabuti pushes branches and merges on approval. |
 | C20 | `web_read`, `page_structure`, `site_crawl` run fixed scripts in the agent's sandbox, not the server: http(s) only, no variables, capped output. Ask mode asks; no shell, no tool. |
 | C21 | `view_images` mosaics web images or workspace files in the agent's sandbox, never the server; the agent's model sees it in the tool result. |
+| C22 | An agent made from a template follows it: on upgrade, a file the owner never changed takes the template's version, shown to them; one they changed is never overwritten, its diff offered to apply or keep. |
 
 **When a bug is found in production (rule 28):** add the missing obligation first, as a test proven to catch the bug, then fix the code.
 
