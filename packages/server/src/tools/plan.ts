@@ -79,6 +79,10 @@ export const planTool: Tool<Input> = {
         "control pages over the same dates. Search results change for reasons that are not " +
         "your change, and each device's on its own: a CTR or position measured for all " +
         "devices together can move with no change of yours.",
+      "A new page starts with few signals: its position moves for weeks while Google " +
+        "estimates it, and most new pages never reach the top 10. Do not judge a new-page " +
+        "experiment, or a milestone that rests on new pages, on its early checks; say the " +
+        "signal has not settled. Give such a milestone months, not weeks.",
     ].join("\n"),
   input: Input,
   execute(input, ctx) {
