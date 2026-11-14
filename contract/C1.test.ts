@@ -21,7 +21,7 @@ describe("C1: the loop ends on a reply without tool calls, or on budget exhausti
     const end = await h.turn("loop forever");
     expect(end.reason).toBe("budget_steps");
     expect(end.steps).toBe(3);
-    expect(end.problem?.nextStep).toContain("maxSteps");
+    expect(end.problem?.nextStep).toContain("Max steps per turn");
     // The conversation is still usable after a budget stop.
     h.model.requests.length = 0;
     expect((await h.turn("again")).reason).toBe("budget_steps");
@@ -37,6 +37,6 @@ describe("C1: the loop ends on a reply without tool calls, or on budget exhausti
     expect(end.reason).toBe("budget_cost");
     expect(end.steps).toBe(3);
     expect(end.costUsd).toBeCloseTo(1.2 + 3 * 0.00001);
-    expect(end.problem?.nextStep).toContain("maxCostUsd");
+    expect(end.problem?.nextStep).toContain("Max cost per turn");
   });
 });

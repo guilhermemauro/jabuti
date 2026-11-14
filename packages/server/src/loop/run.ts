@@ -24,6 +24,8 @@ import type { Tracer } from "../tracer/index.ts";
 
 /** Spend for one user turn, shared by the agent and every subagent it runs. */
 interface Budget {
+  /** The agent whose profile set it: the one to raise, even when a subagent runs it out. */
+  owner: string;
   maxSteps: number;
   maxCostUsd: number;
   steps: number;
@@ -109,7 +111,7 @@ export async function runLoop(deps: LoopDeps, options: RunOptions): Promise<RunR
   let finalText = "";
 
   for (let step = 0; ; step++) {
-    const stop = budgetStop(budget, agent);
+    const stop = budgetStop(budget);
     if (stop) return { ...stop, finalText };
     if (signal.aborted) return cancelled(finalText);
 
@@ -361,6 +363,7 @@ async function runSubagent(
   return {
     content:
       `Subagent ${agent.name} stopped early (${result.reason}): ${result.problem?.message ?? ""}\n` +
+      (result.problem ? `Next step: ${result.problem.nextStep}\n` : "") +
       `Partial answer:\n${result.finalText}`,
     isError: true,
   };
@@ -372,14 +375,14 @@ function stricter(a: ShellPermission, b: ShellPermission): ShellPermission {
   return STRICTNESS.indexOf(a) >= STRICTNESS.indexOf(b) ? a : b;
 }
 
-function budgetStop(budget: Budget, agent: AgentProfile): Omit<RunResult, "finalText"> | undefined {
-  const config = `agents/${agent.name}/agent.json`;
+function budgetStop(budget: Budget): Omit<RunResult, "finalText"> | undefined {
+  const config = `Settings → Agents → ${budget.owner}`;
   if (budget.steps >= budget.maxSteps) {
     return {
       reason: "budget_steps",
       problem: {
         message: `Stopped after ${String(budget.steps)} steps: the turn's step budget is used up.`,
-        nextStep: `Send a message to let it continue, or raise budget.maxSteps in ${config}.`,
+        nextStep: `Send a message to let it continue, or raise "Max steps per turn" in ${config}.`,
       },
     };
   }
@@ -388,7 +391,7 @@ function budgetStop(budget: Budget, agent: AgentProfile): Omit<RunResult, "final
       reason: "budget_cost",
       problem: {
         message: `Stopped at $${budget.costUsd.toFixed(4)}: the turn's cost budget is used up.`,
-        nextStep: `Send a message to let it continue, or raise budget.maxCostUsd in ${config}.`,
+        nextStep: `Send a message to let it continue, or raise "Max cost per turn (USD)" in ${config}.`,
       },
     };
   }
