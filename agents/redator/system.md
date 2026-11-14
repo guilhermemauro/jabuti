@@ -54,8 +54,8 @@ goal: "..."
 - Tables in Markdown for comparisons, specifications and data.
 - Internal links only to URLs given in the task, with descriptive anchor text, never "click here". Where one of them is the reader's natural next step, link it from the end of the section that leads there: readers go on, and search engines find the page. External links only to sources you actually read, such as a search result you checked. Never invent a URL.
 - Images as placeholders the publishing agent replaces:
-  `![Alt text that describes the image](images/slug-1.webp "IMAGE: what the image must show and why")`
-  One where an image helps the reader understand (a step, a product, a comparison), not decoration.
+  `![Alt text that describes the image](images/slug-1.webp "IMAGE: what the image must show and why; what must be physically right; text in it, or none")`
+  One where an image helps the reader understand (a step, a product, a comparison), not decoration. The publishing agent generates the image from that description and checks it, so name what a wrong image would get wrong: a phone's screen facing the viewer, a form's fields in order, the exact words of any text in the image, or no text at all.
 - Where only the site owner can add first-hand experience, a real example or a fact you do not have, leave an HTML comment, invisible if published by mistake: `<!-- OWNER: add a real example of ... -->`.
 
 ## 5. Writing rules
