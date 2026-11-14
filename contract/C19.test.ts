@@ -234,7 +234,7 @@ describe("C19: an agent works on a plan alone, within limits Jabuti enforces", (
     save("Fixes", 2);
     const h = harness({
       script: (request, i) =>
-        request.system.includes("# Your plan") && i === 0
+        request.system.includes("# Your milestones") && i === 0
           ? { calls: [{ name: "plan", input: { ...milestone, title: " guides " } }] }
           : { text: "Report." },
       agents: [site],
@@ -279,6 +279,31 @@ describe("C19: an agent works on a plan alone, within limits Jabuti enforces", (
       "No approved milestone is open",
     );
     expect(idle.state.plans.get("site").milestones[0]?.status).toBe("proposed");
+    // Its own proposal waits: it is told so, not asked for more.
+    expect(quiet.model.requests[0]?.system).toContain("1 milestone you proposed waits");
+    expect(JSON.stringify(quiet.model.requests[0]?.messages)).not.toContain("propose the next");
+
+    // The owner's milestones are done and nothing waits: the run proposes the next ones,
+    // up to a cap, so the routine does not go quiet and the inbox stays readable.
+    const done = clock();
+    const first = { title: "Fixes", goal: "g", doneWhen: "d" };
+    done.state.plans.saveMilestone("site", undefined, first, "done");
+    const ideas = [1, 2, 3, 4, 5, 6].map((n) => ({ ...milestone, title: `Idea ${String(n)}` }));
+    const next = harness({
+      script: calls(...ideas),
+      agents: [site],
+      state: done.state,
+      autopilot: { now: done.now },
+    });
+    const run2 = await next.autopilot?.act("site", { op: "run", kind: "measure" });
+    await next.runtime.idle(run2?.conversationId ?? "");
+    expect(JSON.stringify(next.model.requests[0]?.messages)).toContain(
+      "propose the next 2 to 4 milestones",
+    );
+    expect(next.model.requests[0]?.system).toContain("propose the next ones");
+    const proposals = results(next);
+    expect(proposals.slice(0, 5).every((r) => !r.isError)).toBe(true);
+    expect(proposals[5]?.content).toContain("5 milestones you proposed wait for the owner");
   });
 
   it("runs on its routine once a day, unattended: approvals refused at once, notes marked auto, a report kept", async () => {
@@ -286,7 +311,7 @@ describe("C19: an agent works on a plan alone, within limits Jabuti enforces", (
     // Ask mode: every command needs an approval nobody will give.
     const careful = { ...site, permissions: { shell: "ask" as const } };
     const script: Script = (request, i) => {
-      if (!request.system.includes("# Your plan")) return { text: "ok" };
+      if (!request.system.includes("# Your milestones")) return { text: "ok" };
       const answered = request.messages.at(-1)?.parts.some((p) => p.type === "tool_result");
       if (answered && i % 3 === 2) return { text: "Report: measured nothing yet, no signal." };
       if (answered)
@@ -360,7 +385,7 @@ describe("C19: an agent works on a plan alone, within limits Jabuti enforces", (
     // Ask mode: the command waits for an approval nobody is there to give (C9).
     let pushes = 0;
     const script: Script = (request) => {
-      if (!request.system.includes("# Your plan")) return { text: "ok" };
+      if (!request.system.includes("# Your milestones")) return { text: "ok" };
       return pushes++ < 1
         ? { calls: [{ name: "shell", input: { command: "git push -u origin seo/a" } }] }
         : { text: "Report." };

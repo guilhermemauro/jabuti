@@ -51,6 +51,8 @@ const DEFAULT_LIMITS: PlanLimits = {
 
 /** Reports kept: the inbox and the next run need the recent ones. */
 const RUNS_KEPT = 60;
+/** Proposals waiting for the owner past which the agent may not add more: the inbox stays readable. */
+const WAITING_MILESTONES = 5;
 const TEXT_LIMIT = 2_000;
 const REPORT_LIMIT = 12_000;
 
@@ -494,18 +496,11 @@ export class Plans {
    */
   render(plan: PlanFile, options: { reports?: number; owner?: boolean } = {}): string {
     const today = this.today();
-    const lines = [`# Your plan, as of ${today} (change it with the plan tool)`, ""];
+    const lines = [`# Your milestones, as of ${today} (change them with the plan tool)`, ""];
     const shown = plan.milestones.filter(
       (m) => m.status !== "dropped" && (options.owner === true || m.status !== "proposed"),
     );
-    if (shown.length === 0) {
-      lines.push(
-        plan.milestones.some((m) => m.status === "proposed")
-          ? "No approved milestones yet: the owner decides on your proposals."
-          : "No milestones yet: propose some for the owner to approve.",
-        "",
-      );
-    } else {
+    if (shown.length > 0) {
       lines.push("Milestones the owner approved, in priority order:");
       for (const m of [...shown].sort(byPriority)) {
         const parts = [`- ${m.id} ${m.title} (${stateOf(plan, m)}): ${m.goal}`];
@@ -521,6 +516,7 @@ export class Plans {
       }
       lines.push("");
     }
+    if (options.owner !== true) lines.push(nextMilestones(plan), "");
     const open = plan.experiments.filter((e) => e.status === "proposed" || e.status === "live");
     if (open.length > 0) {
       lines.push("Open experiments:");
@@ -648,6 +644,14 @@ export class Plans {
             same.status === "proposed"
               ? `${same.id} already proposes "${same.title}": it waits for the owner.`
               : `${same.id} already is "${same.title}".`,
+        };
+      }
+      const waiting = plan.milestones.filter((m) => m.status === "proposed").length;
+      if (by === "agent" && waiting >= WAITING_MILESTONES) {
+        return {
+          problem:
+            `${String(waiting)} milestones you proposed wait for the owner: propose more ` +
+            "once they decide.",
         };
       }
       const milestone: Milestone = {
@@ -793,6 +797,33 @@ function validTimeZone(timeZone: string): boolean {
 }
 
 /** The milestones it depends on that are not done yet. */
+/**
+ * What the agent should do about milestones it has not proposed yet. It never sees its
+ * proposals (render), only how many wait, so it neither repeats them nor goes quiet once
+ * the approved ones are done.
+ */
+function nextMilestones(plan: PlanFile): string {
+  const waiting = plan.milestones.filter((m) => m.status === "proposed").length;
+  const open = plan.milestones.some((m) => m.status === "pending" || m.status === "running");
+  const proposed =
+    waiting === 1
+      ? "1 milestone you proposed waits for the owner"
+      : `${String(waiting)} milestones you proposed wait for the owner`;
+  if (waiting >= WAITING_MILESTONES) return `${proposed}: propose more once they decide.`;
+  if (!open && waiting === 0) {
+    return (
+      "No approved milestone is open: propose the next ones (2 to 4) from what the data " +
+      "shows, for the owner to approve."
+    );
+  }
+  if (!open) return `No approved milestone is open; ${proposed}.`;
+  return (
+    (waiting > 0 ? `${proposed}. ` : "") +
+    "When the data shows a goal that takes several changes and no milestone covers it, " +
+    "propose one."
+  );
+}
+
 function waitsFor(plan: PlanFile, m: Milestone): string[] {
   return m.dependsOn.filter((d) => plan.milestones.find((x) => x.id === d)?.status !== "done");
 }

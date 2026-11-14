@@ -75,7 +75,7 @@ const TOOLS = [
   },
   {
     name: "plan",
-    label: "Plan and routine",
+    label: "Milestones and routine",
     hint: "Works on milestones and experiments, alone on a routine; you approve what goes live.",
   },
   {

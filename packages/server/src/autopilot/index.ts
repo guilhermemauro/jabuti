@@ -22,12 +22,12 @@ import type { GitRequest, GitResult, Sandbox } from "../sandbox/docker.ts";
 
 const TICK_MS = 60_000;
 const DRAFT_TASK =
-  "Draft your plan. Read your brief and notes, and look at fresh data (such as Search " +
+  "Propose your milestones. Read your brief and notes, and look at fresh data (such as Search " +
   "Console for the last 28 and 90 days) before proposing anything. Then propose 3 to 5 " +
   "milestones with the plan tool, ordered by impact over effort: each with a goal, a " +
   "measurable done-when criterion, a due date and what it depends on. Suggest 3 to 5 " +
   "control pages to leave unchanged, so experiments can be compared against them. End " +
-  "with a short summary of the plan for me to approve in the Inbox.";
+  "with a short summary of the milestones for me to approve in the Inbox.";
 
 export interface AutopilotDeps {
   state: AgentState;
@@ -241,7 +241,12 @@ export class Autopilot {
       onStart?.(conversation.id);
       const left = plan.routine.monthlyCapUsd - plan.monthSpentUsd;
       const today = this.today(plan.routine.timeZone);
-      const problem = runtime.send(conversation.id, task(kind, today, focus), {
+      // Nothing approved is left and nothing waits: the run proposes what comes next, so
+      // the routine does not go quiet once the owner's milestones are done.
+      const next = !plan.milestones.some((m) =>
+        ["pending", "running", "proposed"].includes(m.status),
+      );
+      const problem = runtime.send(conversation.id, task(kind, today, focus, next), {
         title: `Routine · ${kind} · ${today}`,
         maxCostUsd: left,
       });
@@ -442,6 +447,7 @@ function task(
   kind: "measure" | "act",
   today: string,
   focus?: { id: string; title: string } | { problem: string },
+  proposeMilestones = false,
 ): string {
   const common =
     `Routine run (${kind}), ${today}. Nobody is watching: anything that needs approval is ` +
@@ -457,9 +463,14 @@ function task(
           `(${focus.title}), the milestone Jabuti picked from the owner's priorities: make it ` +
           "on a branch, push the branch, and propose it with the plan tool, with its " +
           "hypothesis, metric and baseline. One good change beats several.";
+  const next = proposeMilestones
+    ? " No milestone is open or waiting: from the data, propose the next 2 to 4 milestones " +
+      "with the plan tool, ordered by impact over effort, for the owner to approve."
+    : "";
   return (
     common +
     act +
+    next +
     " If there is nothing to do or no signal yet, say so: that is a valid outcome. End with " +
     "your report: what you did; what you measured, with numbers, periods and sources; what " +
     "waits for the owner; the next step."

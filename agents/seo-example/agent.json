@@ -10,6 +10,7 @@
     "site_crawl",
     "view_images",
     "memory",
+    "plan",
     "delegate"
   ],
   "permissions": { "shell": "auto" },
