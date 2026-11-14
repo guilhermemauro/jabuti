@@ -17,7 +17,7 @@ const Input = z.strictObject({
       "sync",
     ])
     .describe(
-      "read the plan; propose_milestone for the owner to approve; update_milestone " +
+      "read your milestones and experiments; propose_milestone for the owner to approve; update_milestone " +
         "(progress, done with evidence, or ask to drop it); propose_change: an experiment " +
         "for the owner to approve; amend or withdraw a proposal; record a due check; " +
         "sync: when publishing is set, bring the base branch into your clone (or clone it).",
@@ -64,12 +64,15 @@ export const planTool: Tool<Input> = {
   name: "plan",
   description: () =>
     [
-      "Your plan: milestones the owner approved, and experiments, each one change measured " +
-        "against a baseline. The plan as of this conversation's start is in the system " +
-        "prompt; read it for the current state.",
-      "Milestones you propose wait for the owner, unseen until approved; you report progress " +
-        "and mark one done only with evidence that meets its criterion. Their goal, criterion " +
-        "and order are the owner's: a routine run is told which one to work on.",
+      "Your milestones, the ones the owner approved, and experiments, each one change " +
+        "measured against a baseline. They are in the system prompt as of this " +
+        "conversation's start; read them for the current state.",
+      "Propose milestones yourself: when none is open, and whenever your analysis finds a " +
+        "goal that takes several changes and no milestone covers it. Each names a goal, a " +
+        "measurable criterion and a due date. They wait for the owner, unseen until " +
+        "approved; you report progress and mark one done only with evidence that meets its " +
+        "criterion. Once approved, their goal, criterion and order are the owner's: a " +
+        "routine run is told which one to work on.",
       "Every change you publish is an experiment (propose_change): the owner approves it, " +
         "and its pages stay locked until every check is recorded, so each result is " +
         "readable. Control pages never change. Record a check only once it is due, from " +
