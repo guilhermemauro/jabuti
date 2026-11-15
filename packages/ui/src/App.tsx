@@ -194,7 +194,7 @@ export function App(props: { onLogout: () => void; onSessionCheck: () => void })
               }}
             >
               <FlagIcon />
-              Plan
+              Milestones
             </button>
             <button
               className={view === "inbox" ? "active" : ""}
@@ -268,7 +268,7 @@ export function App(props: { onLogout: () => void; onSessionCheck: () => void })
                   <ChevronRightIcon size={14} />
                   <span className="crumb-current">{newAgent}</span>
                   <ChevronRightIcon size={14} />
-                  <span className="crumb-tail">plan</span>
+                  <span className="crumb-tail">milestones</span>
                 </>
               ) : open ? (
                 <>

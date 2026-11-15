@@ -55,7 +55,8 @@ export function PlanScreen(props: {
     return (
       <div className="plan-screen">
         <div className="empty">
-          {agent} has no plan. Turn on “Plan and routine” for it in Agents &amp; settings → Tools.
+          {agent} has no milestones. Turn on “Milestones and routine” for it in Agents &amp;
+          settings → Tools.
         </div>
       </div>
     );
@@ -101,7 +102,7 @@ export function PlanScreen(props: {
       )}
       {plan.milestones.length === 0 && editing !== "new" ? (
         <div className="plan-empty">
-          <p>This agent has no plan yet.</p>
+          <p>This agent has no milestones yet.</p>
           <div className="actions">
             <button
               className="primary"
@@ -109,7 +110,7 @@ export function PlanScreen(props: {
                 act(send, agent, { op: "run", kind: "draft" });
               }}
             >
-              Ask {agent} to draft a plan
+              Ask {agent} to propose milestones
             </button>
             <span className="sub">or create a milestone yourself</span>
           </div>
