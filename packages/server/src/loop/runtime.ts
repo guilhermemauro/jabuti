@@ -111,7 +111,15 @@ export class Runtime {
     this.listener = listener;
   }
 
-  info({ id, title, agent, model, shellMode, unattended }: Conversation): ConversationInfo {
+  info({
+    id,
+    title,
+    agent,
+    model,
+    shellMode,
+    unattended,
+    routine,
+  }: Conversation): ConversationInfo {
     let waiting = 0;
     for (const a of this.approvals.values()) if (a.conversationId === id) waiting++;
     return {
@@ -123,6 +131,7 @@ export class Runtime {
       running: this.running.has(id),
       waiting,
       unattended,
+      routine,
     };
   }
 

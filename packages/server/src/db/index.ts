@@ -133,4 +133,8 @@ const MIGRATIONS = [
      key TEXT PRIMARY KEY,
      value TEXT NOT NULL
    )`,
+  // 12: routine runs stay routine runs once the owner answers in one (unattended turns
+  // 0 then), so the sidebar keeps them together. Earlier ones are known by their title.
+  `ALTER TABLE conversations ADD COLUMN routine INTEGER NOT NULL DEFAULT 0;
+   UPDATE conversations SET routine = 1 WHERE unattended = 1 OR title LIKE 'Routine · %'`,
 ];

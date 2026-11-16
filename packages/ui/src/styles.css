@@ -304,6 +304,16 @@ input[type="radio"] {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+.routine-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.routine-runs {
+  flex: none;
+  margin-top: 2px;
+  padding-left: 14px;
+}
 .session-meta {
   display: flex;
   align-items: center;

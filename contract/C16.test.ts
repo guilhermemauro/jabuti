@@ -132,8 +132,11 @@ describe("C16: a variable reaches only the agents in its scope", () => {
     const { value } = freshDb.prepare("SELECT value FROM variables").get() as { value: string };
 
     const old = new DatabaseSync(join(dir, "jabuti.db"));
+    // Only what later migrations touch: every real database has conversations.
     old.exec(`CREATE TABLE variables (name TEXT PRIMARY KEY, value TEXT NOT NULL,
       scope TEXT NOT NULL, shell INTEGER NOT NULL, updated_at TEXT NOT NULL);
+      CREATE TABLE conversations (id TEXT PRIMARY KEY, title TEXT NOT NULL,
+      unattended INTEGER NOT NULL DEFAULT 0);
       PRAGMA user_version = 8`);
     old
       .prepare("INSERT INTO variables VALUES ('OLD', ?, '[\"site-a\"]', 1, '2026-01-01T00:00:00Z')")

@@ -16,18 +16,21 @@ export interface Conversation {
   shellMode: ShellMode | null;
   /** The agent's brief and memory as they were when the conversation started (C14). */
   context: string;
-  /** Started by the agent's routine: approvals are refused, not awaited (C19). */
+  /** Nobody is watching: approvals are refused, not awaited (C19). */
   unattended: boolean;
+  /** Started by the agent's routine; stays so once the owner answers in it. */
+  routine: boolean;
 }
 
 /** A history message plus the provider's verbatim record, for replay. */
 export type StoredMessage = HistoryMessage & { raw?: ProviderRecord };
 
-type ConversationRow = Omit<Conversation, "shellMode" | "unattended"> & {
+type ConversationRow = Omit<Conversation, "shellMode" | "unattended" | "routine"> & {
   shell_mode: ShellMode | null;
   unattended: number;
+  routine: number;
 };
-const COLUMNS = "id, title, agent, model, shell_mode, context, unattended";
+const COLUMNS = "id, title, agent, model, shell_mode, context, unattended, routine";
 
 interface MessageRow {
   message: string;
@@ -51,17 +54,20 @@ export class ConversationStore {
       shellMode: null,
       context,
       unattended,
+      // Only the routine starts unattended conversations.
+      routine: unattended,
     };
     this.db
       .prepare(
-        `INSERT INTO conversations (id, title, agent, context, unattended, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO conversations (id, title, agent, context, unattended, routine, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         conversation.id,
         conversation.title,
         agent,
         context,
+        unattended ? 1 : 0,
         unattended ? 1 : 0,
         new Date().toISOString(),
       );
@@ -149,6 +155,6 @@ export class ConversationStore {
   }
 }
 
-function fromRow({ shell_mode, unattended, ...row }: ConversationRow): Conversation {
-  return { ...row, shellMode: shell_mode, unattended: unattended === 1 };
+function fromRow({ shell_mode, unattended, routine, ...row }: ConversationRow): Conversation {
+  return { ...row, shellMode: shell_mode, unattended: unattended === 1, routine: routine === 1 };
 }

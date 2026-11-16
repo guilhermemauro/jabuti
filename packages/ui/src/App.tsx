@@ -1,8 +1,10 @@
 import type {
+  AgentPlan,
   ApprovalAction,
   AttachmentPart,
   ClientMessage,
   ContextMark,
+  ConversationInfo,
   Problem,
 } from "@jabuti/protocol";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
@@ -217,30 +219,12 @@ export function App(props: { onLogout: () => void; onSessionCheck: () => void })
             </button>
           </nav>
           <div className="section-label">Recent sessions</div>
-          <ul className="sessions">
-            {state.conversations.map((c) => (
-              <li key={c.id}>
-                <button
-                  className={[
-                    c.id === open?.conversation.id && view === "chat" ? "active" : "",
-                    c.waiting > 0 ? "waiting" : "",
-                  ].join(" ")}
-                  onClick={() => {
-                    setView("chat");
-                    send({ type: "conversation.open", conversationId: c.id });
-                  }}
-                >
-                  <span className="session-title">{c.title}</span>
-                  <span className="session-meta">
-                    <span className={`dot ${c.waiting > 0 ? "wait" : c.running ? "on" : ""}`} />
-                    {c.agent}
-                    {c.unattended && " · routine"}
-                    {c.waiting > 0 ? " · waiting for you" : c.running && " · working"}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <Sessions
+            conversations={state.conversations}
+            active={view === "chat" ? open?.conversation.id : undefined}
+            plans={state.plans}
+            open={openConversation}
+          />
           <div className="sidebar-foot">
             <div className="status-row">
               <span className={`dot ${state.connected ? "on" : "off"}`} />
@@ -1118,5 +1102,145 @@ function Composer(props: {
         </div>
       </div>
     </div>
+  );
+}
+
+type SessionEntry =
+  | { kind: "one"; conversation: ConversationInfo }
+  | { kind: "routine"; agent: string; runs: ConversationInfo[] };
+
+/**
+ * The sidebar's sessions, newest first. An agent's routine runs are one entry, placed
+ * where its latest run falls: a run a day would otherwise bury the owner's conversations.
+ */
+function Sessions(props: {
+  conversations: ConversationInfo[];
+  active: string | undefined;
+  plans: AgentPlan[];
+  open: (id: string) => void;
+}) {
+  const entries: SessionEntry[] = [];
+  const groups = new Map<string, ConversationInfo[]>();
+  for (const c of props.conversations) {
+    if (!c.routine) {
+      entries.push({ kind: "one", conversation: c });
+      continue;
+    }
+    const runs = groups.get(c.agent);
+    if (runs) {
+      runs.push(c);
+      continue;
+    }
+    const first = [c];
+    groups.set(c.agent, first);
+    entries.push({ kind: "routine", agent: c.agent, runs: first });
+  }
+  return (
+    <ul className="sessions">
+      {entries.map((e) =>
+        e.kind === "one" ? (
+          <li key={e.conversation.id}>
+            <Session
+              c={e.conversation}
+              active={e.conversation.id === props.active}
+              open={props.open}
+            />
+          </li>
+        ) : (
+          <RoutineRuns
+            key={`routine:${e.agent}`}
+            agent={e.agent}
+            runs={e.runs}
+            active={props.active}
+            plan={props.plans.find((p) => p.agent === e.agent)}
+            open={props.open}
+          />
+        ),
+      )}
+    </ul>
+  );
+}
+
+function Session(props: {
+  c: ConversationInfo;
+  active: boolean;
+  open: (id: string) => void;
+  /** Inside its agent's routine entry: the title without "Routine · ", no agent. */
+  inRoutine?: boolean;
+}) {
+  const { c } = props;
+  return (
+    <button
+      className={[props.active ? "active" : "", c.waiting > 0 ? "waiting" : ""].join(" ")}
+      onClick={() => {
+        props.open(c.id);
+      }}
+    >
+      <span className="session-title">
+        {props.inRoutine ? c.title.replace(/^Routine · /, "") : c.title}
+      </span>
+      <span className="session-meta">
+        <span className={`dot ${c.waiting > 0 ? "wait" : c.running ? "on" : ""}`} />
+        {props.inRoutine ? (c.unattended ? "routine" : "you answered") : c.agent}
+        {c.waiting > 0 ? " · waiting for you" : c.running && " · working"}
+      </span>
+    </button>
+  );
+}
+
+/** An agent's routine runs, newest first, folded under one entry. */
+function RoutineRuns(props: {
+  agent: string;
+  runs: ConversationInfo[];
+  active: string | undefined;
+  plan: AgentPlan | undefined;
+  open: (id: string) => void;
+}) {
+  const { runs } = props;
+  const holdsActive = runs.some((r) => r.id === props.active);
+  const [expanded, setExpanded] = useState(holdsActive);
+  // A run opened from elsewhere (Milestones, Inbox) unfolds its entry.
+  const [seen, setSeen] = useState(props.active);
+  if (props.active !== seen) {
+    setSeen(props.active);
+    if (holdsActive) setExpanded(true);
+  }
+  const latest = runs[0];
+  const waiting = runs.reduce((n, r) => n + r.waiting, 0);
+  const running = runs.some((r) => r.running);
+  const ids = new Set(runs.map((r) => r.id));
+  const unread = props.plan?.runs.filter((r) => !r.read && ids.has(r.conversation)).length ?? 0;
+  return (
+    <li>
+      <button
+        className={[holdsActive && !expanded ? "active" : "", waiting > 0 ? "waiting" : ""].join(
+          " ",
+        )}
+        aria-expanded={expanded}
+        onClick={() => {
+          setExpanded(!expanded);
+        }}
+      >
+        <span className="session-title routine-head">
+          {expanded ? <ChevronDownIcon size={14} /> : <ChevronRightIcon size={14} />}
+          Routine · {props.agent}
+        </span>
+        <span className="session-meta">
+          <span className={`dot ${waiting > 0 ? "wait" : running ? "on" : ""}`} />
+          {latest?.title.replace(/^Routine · /, "")}
+          {unread > 0 && ` · ${String(unread)} unread`}
+          {waiting > 0 ? " · waiting for you" : running && " · working"}
+        </span>
+      </button>
+      {expanded && (
+        <ul className="sessions routine-runs">
+          {runs.map((c) => (
+            <li key={c.id}>
+              <Session c={c} active={c.id === props.active} open={props.open} inRoutine />
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
   );
 }

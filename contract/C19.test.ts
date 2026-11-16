@@ -458,6 +458,9 @@ describe("C19: an agent works on a plan alone, within limits Jabuti enforces", (
     expect(h.runtime.send(run, "Go on.", { owner: true })).toBeUndefined();
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(h.store.get(run)?.unattended).toBe(false);
+    // Still a routine run, so the owner finds it with the others.
+    const answered = h.store.get(run);
+    expect(answered && h.runtime.info(answered)).toMatchObject({ routine: true });
     const last = h.events.filter((e) => e.type.startsWith("approval.")).at(-1);
     expect(last?.type).toBe("approval.requested");
     h.runtime.cancel(run);
