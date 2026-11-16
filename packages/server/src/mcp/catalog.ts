@@ -72,6 +72,20 @@ export const CONNECTORS: ConnectorSpec[] = [
     args: [join(PACKAGES, "mcp-bing/src/index.ts")],
   },
   {
+    name: "clarity",
+    description:
+      "Microsoft Clarity, read-only: what visitors do on each page (sessions, scroll depth, " +
+      "engagement, quickbacks, dead and rage clicks) months back, asked in plain language, " +
+      "and where AI answers cite the site (AI Visibility), as CSV files in the workspace.",
+    variables: ["CLARITY_API_TOKEN"],
+    help: {
+      CLARITY_API_TOKEN:
+        "In https://clarity.microsoft.com, open the project → Settings → Data Export and generate a new API token (project admins only). It reads only that project; deleting it in Clarity stops it at once.",
+    },
+    command: process.execPath,
+    args: [join(PACKAGES, "mcp-clarity/src/index.ts")],
+  },
+  {
     name: "pagespeed",
     description:
       "Google PageSpeed Insights: Lighthouse scores, Core Web Vitals in the lab and from " +
