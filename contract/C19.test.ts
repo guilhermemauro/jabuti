@@ -380,6 +380,55 @@ describe("C19: an agent works on a plan alone, within limits Jabuti enforces", (
     expect(await h.autopilot?.tick()).toEqual([]);
   });
 
+  it("shows the next run the inbox as it is and only the last report, dated, never an old list of what waits", async () => {
+    // A production bug: each report ended with "what waits for the owner", the next run
+    // read two of them and copied the list on, with items the owner had long resolved.
+    const c = clock("2026-11-03T08:01:00Z");
+    let n = 0;
+    const script: Script = (request) => {
+      if (!request.system.includes("# Your milestones")) return { text: "ok" };
+      n++;
+      if (n === 1)
+        return { calls: [{ name: "shell", input: { command: "git push origin seo/capa" } }] };
+      return { text: `Report ${String(n)}. Waiting for the owner: merge seo/capa.` };
+    };
+    const h = harness({
+      script,
+      agents: [{ ...site, permissions: { shell: "ask" as const } }],
+      state: c.state,
+      approvals: "wait",
+      autopilot: { now: c.now },
+    });
+    const run = async (at: string) => {
+      c.at.now = new Date(at);
+      await h.autopilot?.act("site", { op: "run", kind: "measure" });
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const request = h.model.requests.filter((r) => r.system.includes("# Your milestones")).at(-1);
+      return { system: request?.system ?? "", task: JSON.stringify(request?.messages) };
+    };
+
+    // The model is not asked to list what waits: Jabuti's inbox holds it.
+    const first = await run("2026-11-03T08:01:00Z");
+    expect(first.task).not.toContain("what waits for the owner");
+    const decision = c.state.plans.get("site").decisions[0];
+    expect(decision?.summary).toContain("git push origin seo/capa");
+
+    // The next run sees the refused approval as the inbox holds it now, not to ask again.
+    const second = await run("2026-11-04T08:01:00Z");
+    expect(second.system).toContain("in the owner's inbox");
+    expect(second.system).toContain("git push origin seo/capa");
+    expect(second.system).toContain("may have changed since");
+
+    // The owner resolves it: the next run no longer sees it, and sees one report, the last.
+    c.state.plans.dismissDecision("site", decision?.id ?? "");
+    const third = await run("2026-11-05T08:01:00Z");
+    expect(third.system).not.toContain("git push origin seo/capa");
+    expect(third.system.match(/# Report of/g)).toHaveLength(1);
+    // The first run asked twice (a command, then its report), so the last is "Report 3".
+    expect(third.system).toContain("Report 3.");
+    expect(third.system).not.toContain("Report 2.");
+  });
+
   it("refuses an approval in a routine run, as nobody's answer, and asks again once the owner writes", async () => {
     const c = clock("2026-11-03T08:01:00Z");
     // Ask mode: the command waits for an approval nobody is there to give (C9).
@@ -409,6 +458,9 @@ describe("C19: an agent works on a plan alone, within limits Jabuti enforces", (
     expect(h.runtime.send(run, "Go on.", { owner: true })).toBeUndefined();
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(h.store.get(run)?.unattended).toBe(false);
+    // Still a routine run, so the owner finds it with the others.
+    const answered = h.store.get(run);
+    expect(answered && h.runtime.info(answered)).toMatchObject({ routine: true });
     const last = h.events.filter((e) => e.type.startsWith("approval.")).at(-1);
     expect(last?.type).toBe("approval.requested");
     h.runtime.cancel(run);

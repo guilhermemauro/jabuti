@@ -111,7 +111,15 @@ export class Runtime {
     this.listener = listener;
   }
 
-  info({ id, title, agent, model, shellMode, unattended }: Conversation): ConversationInfo {
+  info({
+    id,
+    title,
+    agent,
+    model,
+    shellMode,
+    unattended,
+    routine,
+  }: Conversation): ConversationInfo {
     let waiting = 0;
     for (const a of this.approvals.values()) if (a.conversationId === id) waiting++;
     return {
@@ -123,6 +131,7 @@ export class Runtime {
       running: this.running.has(id),
       waiting,
       unattended,
+      routine,
     };
   }
 
@@ -145,8 +154,6 @@ export class Runtime {
       own: agent.tools.includes("memory"),
       user: agent.userMemory,
       plan: agent.tools.includes("plan"),
-      // What ran before: the last report, or two for a run nobody watches (C19).
-      reports: unattended ? 2 : 1,
     });
     const conversation = this.deps.store.create(agent.name, context, unattended);
     this.deps.capture?.conversationStarted(conversation.id);

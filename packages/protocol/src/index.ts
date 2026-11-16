@@ -668,8 +668,10 @@ export const ConversationInfo = z.object({
   running: z.boolean(),
   /** Approvals waiting for the owner, its subagents' included (C9). */
   waiting: z.number(),
-  /** Started by the agent's routine, with nobody watching (C19). */
+  /** Nobody is watching it now (C19). */
   unattended: z.boolean(),
+  /** Started by the agent's routine, even if the owner answered in it since. */
+  routine: z.boolean(),
 });
 export type ConversationInfo = z.infer<typeof ConversationInfo>;
 

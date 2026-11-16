@@ -458,7 +458,7 @@ function task(
       ? " Do not propose changes today: measure, analyze and plan."
       : "problem" in focus
         ? ` ${focus.problem} Do not propose changes today: measure, analyze and say what ` +
-          "waits for the owner."
+          "blocks the work."
         : ` Then, if the plan's limits allow, prepare the next change for ${focus.id} ` +
           `(${focus.title}), the milestone Jabuti picked from the owner's priorities: make it ` +
           "on a branch, push the branch, and propose it with the plan tool, with its " +
@@ -472,8 +472,9 @@ function task(
     act +
     next +
     " If there is nothing to do or no signal yet, say so: that is a valid outcome. End with " +
-    "your report: what you did; what you measured, with numbers, periods and sources; what " +
-    "waits for the owner; the next step."
+    "your report: what you did; what you measured, with numbers, periods and sources; any " +
+    "question for the owner this run raised; the next step. Do not list what waits in the " +
+    "owner's inbox: Jabuti shows it to them as it is."
   );
 }
 
