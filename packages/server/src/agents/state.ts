@@ -131,10 +131,7 @@ export class AgentState {
    * when it starts, so the system prompt stays byte-identical (C7). Notes appear as
    * their index; their bodies are read on demand.
    */
-  snapshot(
-    agent: string,
-    show: { own: boolean; user: boolean; plan?: boolean; reports?: number },
-  ): string {
+  snapshot(agent: string, show: { own: boolean; user: boolean; plan?: boolean }): string {
     const sections: string[] = [];
     const user = show.user ? this.readUser().trim() : "";
     // Only when there is something: an empty section would be noise in every prompt.
@@ -154,10 +151,12 @@ export class AgentState {
         sections.push(`# Due by today (${today()}): check these first`, Notes.index(due), "");
       }
     }
-    // Milestones, open experiments, checks due and locks (C19); reports in unattended runs.
+    // Milestones, open experiments, checks due, locks, the inbox and the last report (C19).
+    // Older reports repeat what the state says better, and a list copied from them
+    // outlives what it lists.
     if (show.plan) {
       const plans = this.plans;
-      sections.push(plans.render(plans.get(agent), { reports: show.reports ?? 0 }));
+      sections.push(plans.render(plans.get(agent), { reports: 1 }));
     }
     if (sections.length === 0) return "";
     sections.push(

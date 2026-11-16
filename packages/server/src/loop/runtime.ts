@@ -145,8 +145,6 @@ export class Runtime {
       own: agent.tools.includes("memory"),
       user: agent.userMemory,
       plan: agent.tools.includes("plan"),
-      // What ran before: the last report, or two for a run nobody watches (C19).
-      reports: unattended ? 2 : 1,
     });
     const conversation = this.deps.store.create(agent.name, context, unattended);
     this.deps.capture?.conversationStarted(conversation.id);

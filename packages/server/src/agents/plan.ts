@@ -576,9 +576,23 @@ export class Plans {
           : " No control pages yet: suggest a few unchanged pages to compare against."),
       "",
     );
+    // The inbox as it is now, so a run neither asks again nor reports what the owner
+    // already resolved; dismissed decisions are gone from it.
+    if (options.owner !== true && plan.decisions.length > 0) {
+      lines.push("Refused approvals now in the owner's inbox (do not ask again; they decide):");
+      for (const d of plan.decisions) lines.push(`- ${d.at.slice(0, 10)} ${d.summary}`);
+      lines.push("");
+    }
     const reports = plan.runs.slice(0, options.reports ?? 0);
     for (const run of reports) {
-      lines.push(`# Report of your ${run.kind} run on ${run.at.slice(0, 10)}`, run.text.trim(), "");
+      lines.push(
+        `# Report of your ${run.kind} run on ${run.at.slice(0, 10)}`,
+        "What you wrote then; anything in it may have changed since. The state above is " +
+          "current: check the rest at its source (git, the site, the data) before repeating it.",
+        "",
+        run.text.trim(),
+        "",
+      );
     }
     return lines.join("\n");
   }
