@@ -192,6 +192,26 @@ describe("C15: only the owner's session reaches the instance", () => {
     expect(back.headers.get("content-disposition")).toMatch(/^attachment;/);
   });
 
+  it("lets the page show the images and fonts it makes itself, and load nothing from elsewhere", async () => {
+    const i = await instance();
+    const csp = (await i.get("/")).headers.get("content-security-policy") ?? "";
+    const directives = new Map(
+      csp.split(";").map((d) => {
+        const [name = "", ...sources] = d.trim().split(/\s+/);
+        return [name, sources] as const;
+      }),
+    );
+    /** The sources a directive allows, falling back to default-src as browsers do. */
+    const allowed = (name: string) => directives.get(name) ?? directives.get("default-src") ?? [];
+    // Attachment previews are blob: URLs; images in history and Vite's inlined small fonts are data:.
+    expect(allowed("img-src")).toEqual(expect.arrayContaining(["'self'", "blob:", "data:"]));
+    expect(allowed("font-src")).toEqual(expect.arrayContaining(["'self'", "data:"]));
+    for (const name of ["script-src", "connect-src", "default-src"]) {
+      expect(allowed(name), name).toEqual(["'self'"]);
+    }
+    expect(allowed("frame-ancestors")).toEqual(["'none'"]);
+  });
+
   it("lets Caddy certify only the server's sslip.io name and the domain the owner proved", async () => {
     // Synthetic DNS: the owner's domain points at this server, the typo elsewhere.
     const dns: Record<string, string[]> = {

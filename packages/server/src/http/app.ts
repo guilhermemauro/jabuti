@@ -327,9 +327,12 @@ function securityHeaders(res: ServerResponse) {
   res.setHeader("Referrer-Policy", "no-referrer");
   // No framing: another site must not overlay the Approve button (clickjacking).
   res.setHeader("X-Frame-Options", "DENY");
+  // Images and fonts the page makes itself: blob: for attachment previews, data: for
+  // images in history and the small fonts Vite inlines into the CSS. Nothing remote.
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'",
+    "default-src 'self'; connect-src 'self'; img-src 'self' blob: data:; font-src 'self' data:; " +
+      "style-src 'self' 'unsafe-inline'; frame-ancestors 'none'",
   );
 }
 
