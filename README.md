@@ -247,7 +247,7 @@ hand.
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Built-in tools** | `shell`, `packages` (system packages, approved each time), `web_read`, `page_structure`, `site_crawl`, `view_images`, `delegate` (subagents), `memory` (brief and notes), `plan` (milestones, experiments, routines), `agents` (manage agents and skills), `skill` |
 | **Connectors**     | `gsc`, `ga4`, `bing`, `clarity`, `pagespeed`, `serper`, `dataforseo`, `wikipedia`, `nanobanana`, `gptimage`, plus any remote MCP server you register                                                                                                               |
-| **Skills**         | `data-study` (turn company or public data into a study others cite), plus your own                                                                                                                                                                                 |
+| **Skills**         | `data-study` (turn company or public data into a study others cite), `search-questions` (the questions people searched before reaching the site), plus your own                                                                                                    |
 | **Models**         | Claude Opus, Sonnet, Haiku and Fable, through a provider-neutral loop: a provider SDK is imported only in its adapter folder                                                                                                                                       |
 
 ## Security

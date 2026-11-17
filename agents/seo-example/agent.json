@@ -16,5 +16,5 @@
   "permissions": { "shell": "auto" },
   "subagents": ["explorer", "redator"],
   "mcp": ["gsc", "gptimage"],
-  "skills": ["data-study"]
+  "skills": ["data-study", "search-questions"]
 }
