@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import type {
   AttachmentPart,
   ApprovalAction,
+  HeldChange,
   ConnectorInfo,
   ContextMark,
   ConversationInfo,
@@ -55,7 +56,13 @@ export interface RuntimeDeps {
   };
   /** The autopilot (C19): told of approvals an unattended run could not get, and proposals. */
   autopilot?: {
-    refused(conversationId: string, owner: string, asker: string, action: ApprovalAction): void;
+    refused(
+      conversationId: string,
+      owner: string,
+      asker: string,
+      action: ApprovalAction,
+      held?: HeldChange,
+    ): void;
     proposed(agent: string, experiment: Experiment): void;
   };
 }
@@ -470,7 +477,7 @@ export class Runtime {
       proposed: (agent, experiment) => {
         this.deps.autopilot?.proposed(agent, experiment);
       },
-      requestApproval: ({ callId, name, input, agent, action, scope, signal }) =>
+      requestApproval: ({ callId, name, input, agent, action, held, scope, signal }) =>
         new Promise<boolean>((resolve) => {
           const approvalId = randomUUID();
           const conversation = this.deps.store.get(conversationId);
@@ -478,7 +485,7 @@ export class Runtime {
             // Nobody is there to answer: refused at once, and listed for the owner (C19).
             emit({ type: "approval.requested", scope, approvalId, callId, agent, action });
             emit({ type: "approval.resolved", approvalId, approved: false });
-            this.deps.autopilot?.refused(conversationId, conversation.agent, agent, action);
+            this.deps.autopilot?.refused(conversationId, conversation.agent, agent, action, held);
             resolve(false);
             return;
           }

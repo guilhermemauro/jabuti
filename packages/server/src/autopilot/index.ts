@@ -10,6 +10,7 @@ import { randomUUID } from "node:crypto";
 import type {
   AgentPlan,
   ApprovalAction,
+  HeldChange,
   Experiment,
   PlanAction,
   Problem,
@@ -18,6 +19,7 @@ import type {
 import type { AgentRegistry } from "../agents/registry.ts";
 import type { AgentState } from "../agents/state.ts";
 import type { Runtime } from "../loop/runtime.ts";
+import { applyHeld } from "../tools/memory.ts";
 import type { GitRequest, GitResult, Sandbox } from "../sandbox/docker.ts";
 
 const TICK_MS = 60_000;
@@ -101,14 +103,45 @@ export class Autopilot {
   }
 
   /** An approval an unattended run asked for: refused, and kept in its agent's inbox. */
-  refused(conversationId: string, owner: string, asker: string, action: ApprovalAction) {
+  refused(
+    conversationId: string,
+    owner: string,
+    asker: string,
+    action: ApprovalAction,
+    held?: HeldChange,
+  ) {
     if (!this.deps.agents.get(owner)?.tools.includes("plan")) return;
     this.deps.state.plans.addDecision(owner, {
       id: randomUUID(),
       at: this.now().toISOString(),
       conversation: conversationId,
       summary: describe(asker, action),
+      ...(action.kind === "file" ? { diff: action.diff } : {}),
+      ...(held ? { change: held } : {}),
     });
+  }
+
+  /** The owner approves a held change: made only if its note or file is as the run saw it. */
+  private approve(agent: string, id: string): ActionResult {
+    const plans = this.deps.state.plans;
+    const decision = plans.get(agent).decisions.find((d) => d.id === id);
+    if (!decision) return fail(`No decision ${id}.`, "Reload the inbox.");
+    if (!decision.change) {
+      return fail(
+        "Jabuti cannot make this change outside its run.",
+        "Open the conversation and ask the agent to do it again.",
+      );
+    }
+    // Written on the owner's word, from a run nobody watched: marked auto, like the run's.
+    const made = applyHeld(this.deps.state, decision.change, {
+      source: "auto",
+      conversation: decision.conversation,
+    });
+    if ("problem" in made) {
+      return fail(made.problem, "Dismiss it, or ask the agent again with what is there now.");
+    }
+    plans.dismissDecision(agent, id);
+    return made;
   }
 
   /**
@@ -198,6 +231,8 @@ export class Autopilot {
         return outcome(plans.readReport(agent, action.id), "");
       case "decision.dismiss":
         return outcome(plans.dismissDecision(agent, action.id), "");
+      case "decision.approve":
+        return this.approve(agent, action.id);
       case "run": {
         const runtime = this.runtime;
         if (!runtime) return fail("Runs are not available.", "Restart the server.");

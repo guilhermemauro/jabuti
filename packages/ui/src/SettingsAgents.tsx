@@ -11,6 +11,7 @@ import type {
   VariableInfo,
 } from "@jabuti/protocol";
 import { useState } from "react";
+import { Diff } from "./Diff.tsx";
 import { AgentIcon } from "./Icons.tsx";
 import { MemoryFile, Notes } from "./SettingsMemory.tsx";
 import { reaching, VariableForm } from "./SettingsVariables.tsx";
@@ -407,16 +408,7 @@ function TemplateUpdates(props: { updates: TemplateUpdate[]; send: Send }) {
               Lines with − are yours and would go; lines with + come from the template.
             </p>
           )}
-          <pre className="diff">
-            {u.diff.split("\n").map((line, i) => (
-              <div
-                key={i}
-                className={line.startsWith("+") ? "add" : line.startsWith("-") ? "del" : ""}
-              >
-                {line}
-              </div>
-            ))}
-          </pre>
+          <Diff text={u.diff} />
           {u.status === "available" && (
             <div className="row">
               <button
