@@ -451,6 +451,14 @@ describe("C19: an agent works on a plan alone, within limits Jabuti enforces", (
     expect(h.sandbox.commands).toEqual([]);
     // The agent learns nobody was there, not that the owner said no.
     expect(results(h).find((r) => r.isError)?.content).toContain("routine run");
+    // The owner sees it as waiting in the inbox, not as a failure, live and on reload (C11).
+    expect(results(h).find((r) => r.isError)?.inbox).toBe(true);
+    const routine = c.state.plans.get("site").runs[0]?.conversation ?? "";
+    const stored = h.store
+      .history(routine)
+      .flatMap((m) => (m.role === "user" ? m.parts : []))
+      .find((p) => p.type === "tool_result");
+    expect(stored).toMatchObject({ inbox: true });
 
     // The owner answers in the routine's conversation: now someone is there to ask.
     const run = c.state.plans.get("site").runs[0]?.conversation ?? "";

@@ -23,6 +23,8 @@ export interface ToolOutput {
   images?: ToolImage[];
   /** Shown to the owner only, below the call: images a connector generated (C21). */
   files?: ToolFile[];
+  /** Refused in a routine run and listed in the owner's inbox (C19). */
+  inbox?: boolean;
 }
 
 /** The agent profiles, for the agents tool: the same rules as the settings screen. */

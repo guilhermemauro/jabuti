@@ -757,6 +757,10 @@ main {
 .tool-group.error .status .dot {
   background: var(--error);
 }
+/* Refused in a routine run, waiting in the owner's inbox (C19): not a failure. */
+.tool-group.inbox .status .dot {
+  background: var(--warning);
+}
 .tool-group .tools {
   display: flex;
   flex-direction: column;

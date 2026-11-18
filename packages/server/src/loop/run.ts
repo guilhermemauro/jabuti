@@ -301,6 +301,7 @@ async function runTool(
             "listed in the owner's inbox. Do not retry it in this run; carry on without " +
             "it and say in your report what is waiting.",
           isError: true,
+          inbox: true,
         }
       : result;
   deps.emit({ type: "tool.finished", scope, callId: call.id, ...output });
