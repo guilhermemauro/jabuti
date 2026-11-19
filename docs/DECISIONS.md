@@ -252,7 +252,7 @@ A run a day buried the owner's conversations under "Routine · measure · …". 
 Two tools, to keep the context small: `dashboard` (a question; Clarity's reading of it comes first, since it decides columns and rows, and exactly 10 rows, its default, is flagged) and `ai_visibility` (overview, cited pages, queries, topics, trends, with period and page filters). Bot Activity is left out: it needs the site's CDN logs connected to Clarity, and without them it is all zeros. Session recordings are left out until an agent needs them. No rate limit is documented or sent in headers for this API.
 
 ## 2026-11-18 — A memory change a routine run could not get approved waits in the inbox (C19)
-
+  
 A measure run asked to update four notes that came from the owner's approved capture; nobody was there, so each was refused and listed in the inbox with only "Open conversation" and "Dismiss". The change itself was gone: the owner could only ask the agent again. Now a refused note update or delete, or a brief or user memory replace, keeps the change and its diff (`Decision.change`, `Decision.diff`), and the inbox offers Approve. The memory tool describes the change when it asks (`requestApproval(action, held)`), and `applyHeld` in the same module makes it, so memory writes keep one owner.
 
 - **Only if nothing changed since:** the change carries the note or file as the run saw it; if the owner or another run changed it, Approve refuses and says so. An older proposal never overwrites a later edit, the same rule as capture (C18).

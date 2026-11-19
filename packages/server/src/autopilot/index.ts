@@ -486,7 +486,9 @@ function task(
 ): string {
   const common =
     `Routine run (${kind}), ${today}. Nobody is watching: anything that needs approval is ` +
-    "refused and listed in the owner's inbox; do not retry it, move on. First record every " +
+    "refused and listed in the owner's inbox; do not retry it, move on. Changing an [owner] " +
+    "or [capture] note needs approval: record new results in a new note that names the one " +
+    "it follows. First record every " +
     "check due today from fresh data, with the plan tool, and update your milestones' progress.";
   const act =
     !focus || kind === "measure"
