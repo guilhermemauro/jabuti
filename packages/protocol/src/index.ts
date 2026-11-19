@@ -466,12 +466,42 @@ export const RunReport = z.object({
 });
 export type RunReport = z.infer<typeof RunReport>;
 
+/**
+ * A memory write a routine run could not get approved, kept so the owner can still
+ * approve it (C19). `before` is the note or file as the run saw it: the change is made
+ * only if it is still that.
+ */
+export const HeldChange = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("note"),
+    agent: z.string(),
+    op: z.enum(["update", "delete"]),
+    id: z.string(),
+    summary: z.string().optional(),
+    body: z.string().optional(),
+    check: z.string().nullable().optional(),
+    before: z.string(),
+  }),
+  z.object({
+    kind: z.literal("file"),
+    agent: z.string(),
+    file: z.enum(["brief", "user"]),
+    content: z.string(),
+    before: z.string(),
+  }),
+]);
+export type HeldChange = z.infer<typeof HeldChange>;
+
 /** An approval an unattended run could not get: refused, and shown to the owner. */
 export const Decision = z.object({
   id: z.string(),
   at: z.string(),
   conversation: z.string(),
   summary: z.string(),
+  /** For a file change: its lines, prefixed "+ ", "- " or "  ". */
+  diff: z.string().optional(),
+  /** Set when Jabuti can still make the change on the owner's approval. */
+  change: HeldChange.optional(),
 });
 export type Decision = z.infer<typeof Decision>;
 
@@ -536,6 +566,8 @@ export const PlanAction = z.discriminatedUnion("op", [
   z.object({ op: z.literal("run"), kind: z.enum(["measure", "act", "draft"]) }),
   z.object({ op: z.literal("report.read"), id: z.string() }),
   z.object({ op: z.literal("decision.dismiss"), id: z.string() }),
+  /** Makes a held change (Decision.change) if its note or file is as the run saw it. */
+  z.object({ op: z.literal("decision.approve"), id: z.string() }),
 ]);
 export type PlanAction = z.infer<typeof PlanAction>;
 

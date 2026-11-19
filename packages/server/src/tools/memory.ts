@@ -1,7 +1,9 @@
-import type { Note } from "@jabuti/protocol";
+import type { HeldChange, Note } from "@jabuti/protocol";
 import { z } from "zod";
 import { BODY_LIMIT, STATE_LIMIT, SUMMARY_LIMIT, SUMMARY_TARGET } from "../agents/state.ts";
 import type { AgentProfile } from "../agents/registry.ts";
+import type { AgentState } from "../agents/state.ts";
+import type { Author } from "../agents/notes.ts";
 import type { Tool, ToolContext } from "./types.ts";
 
 // One flat object rather than a union per operation: models handle it more reliably,
@@ -133,14 +135,18 @@ export const memoryTool: Tool<Input> = {
                       : {}),
                 });
           // These come from the user: text the agent read elsewhere must not undo them unseen.
-          const approved = await ctx.requestApproval({
-            kind: "file",
-            file: current.path,
-            diff: lineDiff(ctx.state.renderNote(current), after),
-            notes: [
-              `A note from the ${current.source === "owner" ? "user" : "capture the user approved"}.`,
-            ],
-          });
+          const before = ctx.state.renderNote(current);
+          const approved = await ctx.requestApproval(
+            {
+              kind: "file",
+              file: current.path,
+              diff: lineDiff(before, after),
+              notes: [
+                `A note from the ${current.source === "owner" ? "user" : "capture the user approved"}.`,
+              ],
+            },
+            { kind: "note", agent, op: input.op, id: current.id, ...change, before },
+          );
           if (!approved) return failure("The user did not approve this change.");
           if (ctx.signal.aborted) return failure("Cancelled by the user.");
         }
@@ -172,17 +178,59 @@ async function replace(input: Input, ctx: ToolContext) {
   if (current === input.content) return done(`${file}.md already has this content.`);
   // Always asked, whatever the agent's permissions: these enter every future
   // conversation, so text the agent read elsewhere must not land there unseen (C14).
-  const approved = await ctx.requestApproval({
-    kind: "file",
-    file: `${file}.md`,
-    diff: lineDiff(current, input.content),
-    ...(file === "user" ? { notes: ["Every agent with user memory on reads this file."] } : {}),
-  });
+  const approved = await ctx.requestApproval(
+    {
+      kind: "file",
+      file: `${file}.md`,
+      diff: lineDiff(current, input.content),
+      ...(file === "user" ? { notes: ["Every agent with user memory on reads this file."] } : {}),
+    },
+    { kind: "file", agent: ctx.agent.name, file, content: input.content, before: current },
+  );
   if (!approved) return failure("The user did not approve this change.");
   if (ctx.signal.aborted) return failure("Cancelled by the user.");
   if (file === "user") ctx.state.writeUser(input.content);
   else ctx.state.writeBrief(ctx.agent.name, input.content);
   return done(`Saved ${file}.md.`);
+}
+
+/**
+ * Makes a change a routine run could not get approved, now that the owner approved it
+ * in the inbox (C19), only if the note or file is still as the run saw it: the owner's
+ * later edit is never overwritten by an older proposal.
+ */
+export function applyHeld(
+  state: AgentState,
+  change: HeldChange,
+  author: Author,
+): { saved: string } | { problem: string } {
+  const stale = (what: string) => ({
+    problem: `${what} changed since the run asked, so the change was not made.`,
+  });
+  if (change.kind === "file") {
+    const current = change.file === "user" ? state.readUser() : state.readBrief(change.agent);
+    if (current !== change.before) return stale(`${change.file}.md`);
+    if (change.file === "user") state.writeUser(change.content);
+    else state.writeBrief(change.agent, change.content);
+    return { saved: `Saved ${change.file}.md.` };
+  }
+  const current = state.note(change.agent, change.id);
+  if (!current || state.renderNote(current) !== change.before) return stale(change.id);
+  if (change.op === "delete") {
+    state.deleteNote(change.agent, change.id);
+    return { saved: `Deleted ${change.id}.` };
+  }
+  const note = state.updateNote(
+    change.agent,
+    change.id,
+    {
+      ...(change.summary !== undefined ? { summary: change.summary } : {}),
+      ...(change.body !== undefined ? { body: change.body } : {}),
+      ...(change.check !== undefined ? { check: change.check } : {}),
+    },
+    author,
+  );
+  return "problem" in note ? note : { saved: `Updated ${note.id}.` };
 }
 
 const done = (content: string) => ({ content, isError: false });

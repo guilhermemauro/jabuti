@@ -467,6 +467,87 @@ describe("C19: an agent works on a plan alone, within limits Jabuti enforces", (
     await h.runtime.idle(run);
   });
 
+  it("keeps a note or brief change a routine run could not get approved, and makes it once the owner approves, only if nothing changed since", async () => {
+    // A production bug: the inbox listed four refused note changes with only "Open
+    // conversation" and "Dismiss"; the changes themselves were lost.
+    const c = clock("2026-11-03T08:01:00Z");
+    const owned = (summary: string) => {
+      const note = c.state.createNote(
+        "site",
+        { summary, body: "Old.", check: null },
+        { source: "owner" },
+      );
+      return "id" in note ? note.id : "";
+    };
+    const [kept, stale] = [owned("E-0001 measured"), owned("E-0002 measured")];
+    c.state.writeBrief("site", "Old brief.");
+    const writes = [
+      { op: "update", id: kept, body: "New, from the run." },
+      { op: "update", id: stale, body: "Also new." },
+      { op: "replace", file: "brief", content: "New brief." },
+    ];
+    let n = 0;
+    const script: Script = (request) => {
+      if (!request.system.includes("# Your milestones")) return { text: "ok" };
+      const input = writes[n++];
+      return input ? { calls: [{ name: "memory", input }] } : { text: "Report." };
+    };
+    const h = harness({
+      script,
+      agents: [site],
+      state: c.state,
+      approvals: "wait",
+      autopilot: { now: c.now },
+    });
+    await h.autopilot?.act("site", { op: "run", kind: "measure" });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(c.state.note("site", kept)?.body).toBe("Old.");
+    const decisions = c.state.plans.get("site").decisions;
+    const of = (file: string) => decisions.find((d) => d.summary.includes(file));
+    const [forKept, forStale, forBrief] = [
+      of(c.state.note("site", kept)?.path ?? "?"),
+      of(c.state.note("site", stale)?.path ?? "?"),
+      of("brief.md"),
+    ];
+    // The owner sees what would change.
+    expect(forKept?.diff).toContain("+ New, from the run.");
+    expect(forBrief?.diff).toContain("+ New brief.");
+
+    // Approved: made as the run asked, and gone from the inbox.
+    expect(
+      await h.autopilot?.act("site", { op: "decision.approve", id: forKept?.id ?? "" }),
+    ).toEqual({
+      saved: `Updated ${kept}.`,
+    });
+    expect(c.state.note("site", kept)?.body).toBe("New, from the run.");
+    expect(
+      await h.autopilot?.act("site", { op: "decision.approve", id: forBrief?.id ?? "" }),
+    ).toEqual({
+      saved: "Saved brief.md.",
+    });
+    expect(c.state.readBrief("site")).toBe("New brief.");
+
+    // Changed since the run: never overwritten; it stays for the owner to dismiss.
+    c.state.updateNote("site", stale, { body: "The owner's edit." }, { source: "owner" });
+    const refused = await h.autopilot?.act("site", {
+      op: "decision.approve",
+      id: forStale?.id ?? "",
+    });
+    expect(refused?.problem?.message).toContain("changed since the run");
+    expect(c.state.note("site", stale)?.body).toBe("The owner's edit.");
+    expect(c.state.plans.get("site").decisions.map((d) => d.id)).toEqual([forStale?.id]);
+
+    // A refusal with nothing Jabuti can make later (a command) has nothing to approve.
+    c.state.plans.addDecision("site", {
+      id: "cmd",
+      at: "2026-11-03",
+      conversation: "x",
+      summary: "site wanted to run: ls",
+    });
+    const command = await h.autopilot?.act("site", { op: "decision.approve", id: "cmd" });
+    expect(command?.problem?.nextStep).toContain("ask the agent");
+  });
+
   it("publishes with a deploy key only Jabuti holds: pushes on proposal, merges on approval, deletes on rejection", async () => {
     const c = clock();
     c.state.plans.saveMilestone("site", undefined, { title: "t", goal: "g", doneWhen: "d" });
