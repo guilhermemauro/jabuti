@@ -585,10 +585,13 @@ function ToolGroup({ tools, send }: { tools: ToolItem[]; send: Send }) {
   // A pending approval must be visible: the group opens itself while one waits.
   const waiting = tools.some((t) => t.approval?.state === "pending" && !t.result);
   const running = tools.some((t) => !t.result);
-  const failed = tools.filter((t) => t.result?.isError).length;
+  // Refused in a routine run: listed in the inbox, so waiting on the owner, not failed.
+  const inbox = tools.filter((t) => t.result?.inbox).length;
+  const failed = tools.filter((t) => t.result?.isError && !t.result.inbox).length;
   const shown = open || waiting;
+  const state = running ? "running" : failed > 0 ? "error" : inbox > 0 ? "inbox" : "ok";
   return (
-    <div className={`tool-group ${running ? "running" : failed > 0 ? "error" : "ok"}`}>
+    <div className={`tool-group ${state}`}>
       <button
         className="summary"
         aria-expanded={shown}
@@ -613,9 +616,10 @@ function ToolGroup({ tools, send }: { tools: ToolItem[]; send: Send }) {
             ? "waiting for you"
             : running
               ? "running…"
-              : failed > 0
-                ? `${String(failed)} failed`
-                : "done"}
+              : [
+                  ...(failed > 0 ? [`${String(failed)} failed`] : []),
+                  ...(inbox > 0 ? [`${String(inbox)} waiting in inbox`] : []),
+                ].join(", ") || "done"}
         </span>
       </button>
       {shown && (
@@ -723,7 +727,13 @@ function ContextMarkView({ mark }: { mark: ContextMark }) {
 function ToolCard({ tool, send }: { tool: ToolItem; send: Send }) {
   const input = (tool.input ?? {}) as Record<string, unknown>;
   const pending = tool.approval?.state === "pending" && !tool.result;
-  const status = tool.result ? (tool.result.isError ? "error" : "ok") : "running";
+  const status = tool.result
+    ? tool.result.inbox
+      ? "inbox"
+      : tool.result.isError
+        ? "error"
+        : "ok"
+    : "running";
 
   const runs = tool.name === "agents" && input["action"] === "run";
   if (tool.name === "delegate" || runs) {
@@ -777,7 +787,7 @@ function toolTitle(tool: ToolItem): string {
   if (tool.name === "delegate") return `→ ${String(input["agent"])}`;
   if (tool.name === "agents" && input["action"] === "run") return `⚙ run ${String(input["agent"])}`;
   return tool.name === "memory"
-    ? `✎ ${String(input["file"])}.md`
+    ? memoryTitle(input)
     : tool.name === "agents"
       ? agentsTitle(input)
       : tool.name.startsWith("mcp__")
@@ -791,6 +801,25 @@ function toolTitle(tool: ToolItem): string {
               : tool.name === "view_images"
                 ? `🖼 looked at ${String((input["images"] as unknown[] | undefined)?.length ?? 0)} image(s)`
                 : `$ ${command}`;
+}
+
+/** "✎ brief.md", "✎ new note", "✎ m-0012 updated": what a memory call touched. */
+function memoryTitle(input: Record<string, unknown>): string {
+  const id = typeof input["id"] === "string" ? input["id"] : "note";
+  switch (input["op"]) {
+    case "replace":
+      return `✎ ${String(input["file"])}.md`;
+    case "create":
+      return "✎ new note";
+    case "update":
+      return `✎ ${id} updated`;
+    case "delete":
+      return `✎ ${id} deleted`;
+    case "search":
+      return `✎ searched notes: ${String(input["text"])}`;
+    default:
+      return `✎ read ${id}`;
+  }
 }
 
 /** In the transcript, where the call waits: the buttons are in the dock below. */

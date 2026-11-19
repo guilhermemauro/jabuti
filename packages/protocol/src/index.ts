@@ -27,6 +27,8 @@ export const ToolResultPart = z.object({
   isError: z.boolean(),
   images: z.array(ToolImage).optional(),
   files: z.array(ToolFile).optional(),
+  /** Refused in a routine run and listed in the owner's inbox: waiting, not failed (C19). */
+  inbox: z.boolean().optional(),
 });
 
 /** Where the UI's uploads land in the agent's workspace: uploads/<date>/<name>. */
@@ -792,6 +794,7 @@ export const LoopEvent = z.discriminatedUnion("type", [
     isError: z.boolean(),
     images: z.array(ToolImage).optional(),
     files: z.array(ToolFile).optional(),
+    inbox: z.boolean().optional(),
   }),
   /** A problem that does not stop the turn, such as a connector that did not start (C5, C11). */
   z.object({ type: z.literal("notice"), scope: Scope, problem: Problem }),

@@ -29,7 +29,14 @@ export interface ToolItem {
     action: ApprovalAction;
     state: "pending" | "approved" | "denied";
   };
-  result?: { content: string; isError: boolean; images?: ToolImage[]; files?: ToolFile[] };
+  result?: {
+    content: string;
+    isError: boolean;
+    images?: ToolImage[];
+    files?: ToolFile[];
+    /** Refused in a routine run, waiting in the owner's inbox (C19). */
+    inbox?: boolean;
+  };
   /** Subagent activity, when this is a delegate call. */
   children: Item[];
   streaming: string;
@@ -212,6 +219,7 @@ function fromHistory(history: HistoryMessage[]): Item[] {
             isError: part.isError,
             ...(part.images ? { images: part.images } : {}),
             ...(part.files ? { files: part.files } : {}),
+            ...(part.inbox ? { inbox: true } : {}),
           };
         }
       }
@@ -331,6 +339,7 @@ function apply(
                   isError: event.isError,
                   ...(event.images ? { images: event.images } : {}),
                   ...(event.files ? { files: event.files } : {}),
+                  ...(event.inbox ? { inbox: true } : {}),
                 },
               }
             : item,
