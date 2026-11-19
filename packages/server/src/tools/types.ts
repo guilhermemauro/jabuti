@@ -1,5 +1,6 @@
 import type {
   ApprovalAction,
+  HeldChange,
   ConnectorInfo,
   Experiment,
   LoopEvent,
@@ -60,8 +61,11 @@ export interface ToolContext {
   proposed: (experiment: Experiment) => void;
   state: AgentState;
   agentAdmin: AgentAdmin;
-  /** Asks the user in the UI. Resolves false on denial or cancel. */
-  requestApproval: (action: ApprovalAction) => Promise<boolean>;
+  /**
+   * Asks the user in the UI. Resolves false on denial or cancel. `held` describes the
+   * change so that, refused in a routine run, the owner can still approve it (C19).
+   */
+  requestApproval: (action: ApprovalAction, held?: HeldChange) => Promise<boolean>;
   /** Runs another agent's loop on a fresh context and returns its final answer (C12). */
   runSubagent: (agent: AgentProfile, task: string) => Promise<ToolOutput>;
   /** The same, but in that agent's own workspace (the agents tool's run, C12). */

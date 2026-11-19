@@ -2,6 +2,7 @@
 // tool call or the budget runs out (C1). Written by hand; no framework.
 import type {
   ApprovalAction,
+  HeldChange,
   AssistantPart,
   Experiment,
   LoopEvent,
@@ -54,6 +55,7 @@ export interface LoopDeps {
     input: unknown;
     agent: string;
     action: ApprovalAction;
+    held?: HeldChange;
     scope: Scope;
     signal: AbortSignal;
   }) => Promise<boolean>;
@@ -269,13 +271,14 @@ async function runTool(
         proposed: (experiment) => {
           deps.proposed(agent.name, experiment);
         },
-        requestApproval: async (action) => {
+        requestApproval: async (action, held) => {
           const approved = await deps.requestApproval({
             callId: call.id,
             name: call.name,
             input: call.input,
             agent: agent.name,
             action,
+            ...(held ? { held } : {}),
             scope,
             signal,
           });

@@ -11,6 +11,7 @@ import type {
   Weekday,
 } from "@jabuti/protocol";
 import { useState } from "react";
+import { Diff } from "./Diff.tsx";
 import { AgentIcon, ChevronDownIcon, ChevronRightIcon, PlusIcon } from "./Icons.tsx";
 import { Markdown } from "./Markdown.tsx";
 
@@ -1069,11 +1070,30 @@ export function InboxScreen(props: { plans: AgentPlan[]; send: Send; open: Open 
             )}
             {item.kind === "decision" && (
               <div className="decision">
-                <p>
-                  A routine run could not ask you, so this was refused:{" "}
-                  <span className="mono">{item.d.summary}</span>
-                </p>
+                {item.d.change ? (
+                  <p>
+                    A routine run could not ask you, so this waits for you:{" "}
+                    <span className="mono">{item.d.summary}</span>. Approve makes it now, unless it
+                    changed since.
+                  </p>
+                ) : (
+                  <p>
+                    A routine run could not ask you, so this was refused:{" "}
+                    <span className="mono">{item.d.summary}</span>
+                  </p>
+                )}
+                {item.d.diff !== undefined && <Diff text={item.d.diff} />}
                 <div className="actions">
+                  {item.d.change && (
+                    <button
+                      className="primary"
+                      onClick={() => {
+                        act(send, item.plan.agent, { op: "decision.approve", id: item.d.id });
+                      }}
+                    >
+                      Approve
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       props.open(item.d.conversation);

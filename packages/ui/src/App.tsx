@@ -9,6 +9,7 @@ import type {
 } from "@jabuti/protocol";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { connect, type Connection } from "./connection.ts";
+import { Diff } from "./Diff.tsx";
 import {
   AgentIcon,
   AttachIcon,
@@ -877,18 +878,7 @@ function Approval({
 }) {
   return (
     <>
-      {action.kind === "file" && (
-        <pre className="diff">
-          {action.diff.split("\n").map((line, i) => (
-            <div
-              key={i}
-              className={line.startsWith("+") ? "add" : line.startsWith("-") ? "del" : ""}
-            >
-              {line}
-            </div>
-          ))}
-        </pre>
-      )}
+      {action.kind === "file" && <Diff text={action.diff} />}
       {action.kind === "mcp" && <pre className="diff">{action.input}</pre>}
       {(action.kind === "file" || action.kind === "run") &&
         action.notes?.map((note) => (
