@@ -258,3 +258,7 @@ A measure run asked to update four notes that came from the owner's approved cap
 - **Only if nothing changed since:** the change carries the note or file as the run saw it; if the owner or another run changed it, Approve refuses and says so. An older proposal never overwrites a later edit, the same rule as capture (C18).
 - **Marked auto:** an approved note change is written as the run would have, `[auto]` with the run's conversation.
 - **Only memory:** a shell command, packages, an MCP call or another agent's run are not made later, outside their run: their context is gone. They keep "Open conversation".
+
+## 2026-11-24 — `page-two` skill, adapted from `Illyism/seo-skills` (C4, C19)
+
+From the MIT `Illyism/seo-skills` collection, its method for pushing a page from position 8–20 into the top 3 (`blog-refresher`, `seo-title-optimization`, the weekly step of `seo-autopilot`) was rewritten as the built-in `page-two` skill, not imported: theirs assume the site's repository and a fixed CTR curve, title formulas and year modifiers, general advice our SEO agent is told not to give. Ours ranks pages by the site's own click rate by position from Search Console, splits by device, reads the results above with the search connector or says it did not, and turns each change into an experiment with a baseline (C19). The rest of the collection was left: most skills sell a sponsor's service or need a paid API (Ahrefs, DataForSEO) we have no connector for.
