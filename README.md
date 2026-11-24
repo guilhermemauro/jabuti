@@ -7,6 +7,10 @@
 </p>
 
 <p align="center">
+  <a href="https://getjabuti.com/"><img alt="Website: getjabuti.com" src="https://img.shields.io/badge/website-getjabuti.com-2e7d32?style=for-the-badge"></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/guilhermemauro/jabuti/actions/workflows/check.yml"><img alt="Check" src="https://github.com/guilhermemauro/jabuti/actions/workflows/check.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue"></a>
   <img alt="Node 26+" src="https://img.shields.io/badge/node-26%2B-339933">
