@@ -104,6 +104,25 @@ describe("C4: skills are listed by name and description, loaded on demand", () =
     );
   });
 
+  it("reads a description written as a YAML block, as skills from other harnesses do", () => {
+    const owner = folder({
+      "imported/SKILL.md":
+        "---\nname: imported\ndescription: >-\n  Refresh a post that slipped\n  to page two.\nmetadata:\n  version: 1.0.0\n---\nBody.",
+      "empty-block/SKILL.md": "---\ndescription: |\nmetadata: x\n---\nBody.",
+    });
+    const fromDisk = new Skills([], { builtIn: folder({}), owner });
+    expect(fromDisk.list()).toEqual([
+      {
+        name: "imported",
+        description: "Refresh a post that slipped to page two.",
+        source: "owner",
+      },
+    ]);
+    expect(fromDisk.load().problems).toEqual([
+      expect.objectContaining({ message: expect.stringContaining("empty-block") as unknown }),
+    ]);
+  });
+
   it("refuses to save a profile naming a skill that does not exist", () => {
     const deps = {
       agents: new AgentRegistry([studious]),

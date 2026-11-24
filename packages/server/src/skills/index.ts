@@ -187,16 +187,13 @@ function readOnly(): Problem {
 const FORMAT =
   "Start the file with front matter: a line ---, a line description: <one line>, a line ---, then the method.";
 
-/** "---\ndescription: ...\n---\nbody". Other front-matter keys are ignored. */
+/** "---\ndescription: ...\n---\nbody". Other front-matter keys (name, metadata…) are ignored. */
 function parse(text: string): { description: string; body: string } | { problem: string } {
   const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(text);
   if (!match) return { problem: "no front matter." };
   const front = match[1] ?? "";
   const body = (match[2] ?? "").trim();
-  const description = /^description:\s*(.+)$/m
-    .exec(front)?.[1]
-    ?.trim()
-    .replace(/^"(.*)"$/, "$1");
+  const description = readDescription(front);
   if (!description) return { problem: "no description in the front matter." };
   if (description.length > DESCRIPTION_LIMIT) {
     return { problem: `the description is over ${String(DESCRIPTION_LIMIT)} characters.` };
@@ -206,4 +203,23 @@ function parse(text: string): { description: string; body: string } | { problem:
     return { problem: `the method is over ${String(BODY_LIMIT)} characters.` };
   }
   return { description, body };
+}
+
+/**
+ * The description on one line, quoted or not, or as a YAML block (`>-`, `|`…) on the
+ * indented lines below it, as skills written for other harnesses have it; joined into
+ * one line, since the prompt lists it as one. Not a YAML parser: other forms are refused.
+ */
+function readDescription(front: string): string | undefined {
+  const lines = front.split(/\r?\n/);
+  const at = lines.findIndex((l) => l.startsWith("description:"));
+  if (at < 0) return undefined;
+  const value = (lines[at] ?? "").slice("description:".length).trim();
+  if (!/^[>|][+-]?$/.test(value)) return value.replace(/^(["'])(.*)\1$/, "$2") || undefined;
+  const block: string[] = [];
+  for (const line of lines.slice(at + 1)) {
+    if (line.trim() && !/^\s/.test(line)) break;
+    block.push(line.trim());
+  }
+  return block.filter(Boolean).join(" ") || undefined;
 }
