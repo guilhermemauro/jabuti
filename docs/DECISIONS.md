@@ -258,3 +258,7 @@ A measure run asked to update four notes that came from the owner's approved cap
 - **Only if nothing changed since:** the change carries the note or file as the run saw it; if the owner or another run changed it, Approve refuses and says so. An older proposal never overwrites a later edit, the same rule as capture (C18).
 - **Marked auto:** an approved note change is written as the run would have, `[auto]` with the run's conversation.
 - **Only memory:** a shell command, packages, an MCP call or another agent's run are not made later, outside their run: their context is gone. They keep "Open conversation".
+
+## 2026-11-24 — Skills from other harnesses: a YAML block description is read (C4)
+
+Skills written for the Agent Skills format (Claude Code, Cursor, the MIT `Illyism/seo-skills` collection) put the description in a YAML block (`description: >-` and indented lines). The loader read only the line after `description:`, so such a skill was accepted with the description `>-`, an empty listing the agent could not choose by. It now joins the block's lines into one; other YAML forms are still refused, with the format in the next step. Not a YAML parser: one form more, and a dependency for it would cost more than it buys.
