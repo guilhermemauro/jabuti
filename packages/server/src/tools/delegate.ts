@@ -19,7 +19,7 @@ export const delegateTool: Tool<z.infer<typeof Input>> = {
       .join("\n");
     return (
       "Hand a self-contained task to a subagent. It starts with a fresh context, uses its " +
-      "own tools and permissions, shares this conversation's /workspace, and returns only " +
+      "own tools and permissions, shares this conversation's workspace, and returns only " +
       `its final answer. Available subagents:\n${list}`
     );
   },

@@ -54,6 +54,11 @@ afterAll(() => {
 });
 
 describe("C3: in a container, shell commands run in the runner, one user per agent", () => {
+  it("starts in the workspace, which ~ names too", async () => {
+    const result = await run("site-a", "echo here > start.txt && cd / && cd ~ && cat start.txt");
+    expect(result.output, result.output).toBe("here\n");
+  });
+
   it("sees no variable from the runner's environment, nor its token", async () => {
     const result = await run("site-a", "env; cat /proc/1/environ 2>&1");
     expect(result.exitCode).not.toBe(-1);

@@ -126,6 +126,10 @@ export class DockerSandbox implements Sandbox {
       [
         "exec",
         ...names,
+        // After the agent's variables, so none replaces it: ~ is the workspace, as in
+        // the runner, where the workspace is the agent's home (C3).
+        "-e",
+        "HOME=/workspace",
         container,
         "timeout",
         "-s",
