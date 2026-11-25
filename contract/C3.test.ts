@@ -44,6 +44,11 @@ describe("C3: shell commands run in a container with only the workspace mounted"
     expect(result.output).not.toContain("c3-secret-value");
   });
 
+  it("starts in the workspace, which ~ names too", { timeout: 60_000 }, async () => {
+    const result = await run("echo here > start.txt && cd / && cd ~ && cat start.txt");
+    expect(result.output, result.output).toBe("here\n");
+  });
+
   it(
     "shares the agent's workspace with the host, and nothing else",
     { timeout: 60_000 },

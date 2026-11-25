@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Tool } from "./types.ts";
 
 const Input = z.strictObject({
-  command: z.string().min(1).describe("The command, run with sh -c in /workspace."),
+  command: z.string().min(1).describe("The command, run with sh -c in your workspace."),
   timeout_seconds: z
     .number()
     .int()
@@ -15,13 +15,14 @@ const Input = z.strictObject({
 export const shellTool: Tool<z.infer<typeof Input>> = {
   name: "shell",
   description: () =>
-    "Run a shell command in this conversation's sandbox: a Linux container with Python 3, " +
-    "where /workspace persists between commands. Returns combined stdout and stderr " +
+    "Run a shell command in this conversation's sandbox: a Linux container with Python 3. " +
+    "Commands start in your workspace, which persists between commands and conversations: " +
+    "use paths relative to it, or ~ for it; it has no fixed absolute path. Returns combined stdout and stderr " +
     "and the exit code. Use it to write and run scripts. Install Python or Node " +
     "libraries with pip or npm here; for a missing system command, use the packages tool. " +
     "When you analyze data, report medians and ranges with the sample size, not averages " +
     "alone, and treat a correlation as a hypothesis, not a cause. To show the user an " +
-    "image you made, put ![short description](path/relative/to/workspace.png) in your " +
+    "image you made, put ![short description](chart.png), its path relative to your workspace, in your " +
     "reply: it appears in their chat (you do not see it; view_images shows it to you).",
   input: Input,
   async execute(input, ctx) {
